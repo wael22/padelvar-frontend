@@ -4,25 +4,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Plus, 
+import {
+  Plus,
   Building,
   MapPin,
   Phone,
@@ -42,7 +42,7 @@ import {
   DropdownMenuItem
 } from '@/components/ui/dropdown-menu';
 
-const ClubManagement = ({ onStatsUpdate }) => {
+const ClubManagement = ({ onStatsUpdate, onDataChange }) => {
   const [clubs, setClubs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -58,7 +58,8 @@ const ClubManagement = ({ onStatsUpdate }) => {
     name: '',
     address: '',
     phone_number: '',
-    email: ''
+    email: '',
+    password: '' // Added password field
   });
   const [courtFormData, setCourtFormData] = useState({
     name: "",
@@ -103,6 +104,10 @@ const ClubManagement = ({ onStatsUpdate }) => {
       resetClubForm();
       loadClubs();
       onStatsUpdate();
+      // Notifier les autres composants du changement
+      if (onDataChange) {
+        onDataChange();
+      }
     } catch (error) {
       setError('Erreur lors de la création du club');
       console.error('Error creating club:', error);
@@ -121,6 +126,10 @@ const ClubManagement = ({ onStatsUpdate }) => {
       resetClubForm();
       loadClubs();
       onStatsUpdate();
+      // Notifier les autres composants du changement
+      if (onDataChange) {
+        onDataChange();
+      }
     } catch (error) {
       setError('Erreur lors de la mise à jour du club');
       console.error('Error updating club:', error);
@@ -138,6 +147,10 @@ const ClubManagement = ({ onStatsUpdate }) => {
       await adminService.deleteClub(clubId);
       loadClubs();
       onStatsUpdate();
+      // Notifier les autres composants du changement
+      if (onDataChange) {
+        onDataChange();
+      }
     } catch (error) {
       setError('Erreur lors de la suppression du club');
       console.error('Error deleting club:', error);
@@ -200,7 +213,8 @@ const ClubManagement = ({ onStatsUpdate }) => {
       name: '',
       address: '',
       phone_number: '',
-      email: ''
+      email: '',
+      password: '' // Reset password field
     });
     setSelectedClub(null);
   };
@@ -220,7 +234,8 @@ const ClubManagement = ({ onStatsUpdate }) => {
       name: club.name,
       address: club.address || '',
       phone_number: club.phone_number || '',
-      email: club.email || ''
+      email: club.email || '',
+      password: '' // Do not pre-fill password for security
     });
     setShowEditModal(true);
   };
@@ -322,6 +337,19 @@ const ClubManagement = ({ onStatsUpdate }) => {
                       value={clubFormData.email}
                       onChange={(e) => setClubFormData(prev => ({ ...prev, email: e.target.value }))}
                       placeholder="contact@clubpadel.com"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="club-password">Mot de passe</Label>
+                    <Input
+                      id="club-password"
+                      type="password"
+                      value={clubFormData.password}
+                      onChange={(e) => setClubFormData(prev => ({ ...prev, password: e.target.value }))}
+                      placeholder="Mot de passe du club"
+                      required
                     />
                   </div>
                   

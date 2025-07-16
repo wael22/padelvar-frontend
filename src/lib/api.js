@@ -61,6 +61,17 @@ export const adminService = {
   deleteCourt: (courtId) => api.delete(`/admin/courts/${courtId}`),
   getAllVideos: () => api.get('/admin/videos'),
   addCredits: (userId, credits) => api.post(`/admin/users/${userId}/credits`, { credits }),
+  // Nouvelles fonctionnalités pour l'historique
+  getClubHistory: (clubId) => api.get(`/admin/clubs/${clubId}/history`),
+  getAllClubsHistory: () => api.get('/admin/clubs/history/all'),
+};
+
+// Services pour les joueurs
+export const playerService = {
+  getAvailableClubs: () => api.get('/players/clubs/available'),
+  followClub: (clubId) => api.post(`/players/clubs/${clubId}/follow`),
+  unfollowClub: (clubId) => api.post(`/players/clubs/${clubId}/unfollow`),
+  getFollowedClubs: () => api.get('/players/clubs/followed'),
 };
 
 // Services pour les clubs
@@ -77,7 +88,13 @@ export const clubService = {
   deleteCourt: (courtId) => api.delete(`/clubs/courts/${courtId}`),
   createPlayer: (playerData) => api.post('/clubs/players', playerData),
   updatePlayer: (playerId, playerData) => api.put(`/clubs/players/${playerId}`, playerData),
+  getAllClubs: () => api.get('/clubs/all'),
+  getClubCourts: (clubId) => api.get(`/clubs/${clubId}/courts`),
+  // Nouvelles fonctionnalités
+  getFollowers: () => api.get('/clubs/followers'),
+  updateFollower: (playerId, playerData) => api.put(`/clubs/followers/${playerId}/update`, playerData),
+  addCreditsToFollower: (playerId, credits) => api.post(`/clubs/followers/${playerId}/add-credits`, { credits }),
+  getClubHistory: () => api.get('/clubs/history'),
 };
 
 export default api;
-

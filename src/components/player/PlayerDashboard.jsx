@@ -6,6 +6,7 @@ import VideoCard from './VideoCard';
 import RecordingModal from './RecordingModal';
 import BuyCreditsModal from './BuyCreditsModal';
 import ProfileModal from './ProfileModal';
+import ClubFollowing from './ClubFollowing';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -21,7 +22,8 @@ import {
   Loader2,
   Coins,
   User,
-  Settings
+  Settings,
+  Heart
 } from 'lucide-react';
 
 const PlayerDashboard = () => {
@@ -162,74 +164,91 @@ const PlayerDashboard = () => {
           </Card>
         </div>
 
-        {/* Liste des vidéos */}
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList>
-            <TabsTrigger value="all">Toutes les vidéos</TabsTrigger>
-            <TabsTrigger value="unlocked">Déverrouillées</TabsTrigger>
-            <TabsTrigger value="locked">Verrouillées</TabsTrigger>
+        {/* Onglets principaux */}
+        <Tabs defaultValue="videos" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="videos">Mes Vidéos</TabsTrigger>
+            <TabsTrigger value="clubs">
+              <Heart className="h-4 w-4 mr-2" />
+              Clubs
+            </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="all" className="mt-6">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </div>
-            ) : error ? (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            ) : videos.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Video className="h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    Aucune vidéo enregistrée
-                  </h3>
-                  <p className="text-gray-600 text-center mb-4">
-                    Commencez votre premier enregistrement pour voir vos matchs ici
-                  </p>
-                  <Button onClick={() => setShowRecordingModal(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Premier Enregistrement
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {videos.map((video) => (
-                  <VideoCard 
-                    key={video.id} 
-                    video={video} 
-                    onVideoUnlocked={handleVideoUnlocked}
-                  />
-                ))}
-              </div>
-            )}
+          <TabsContent value="videos" className="mt-6">
+            {/* Sous-onglets pour les vidéos */}
+            <Tabs defaultValue="all" className="w-full">
+              <TabsList>
+                <TabsTrigger value="all">Toutes les vidéos</TabsTrigger>
+                <TabsTrigger value="unlocked">Déverrouillées</TabsTrigger>
+                <TabsTrigger value="locked">Verrouillées</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="all" className="mt-6">
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  </div>
+                ) : error ? (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                ) : videos.length === 0 ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <Video className="h-12 w-12 text-gray-400 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        Aucune vidéo enregistrée
+                      </h3>
+                      <p className="text-gray-600 text-center mb-4">
+                        Commencez votre premier enregistrement pour voir vos matchs ici
+                      </p>
+                      <Button onClick={() => setShowRecordingModal(true)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Premier Enregistrement
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {videos.map((video) => (
+                      <VideoCard 
+                        key={video.id} 
+                        video={video} 
+                        onVideoUnlocked={handleVideoUnlocked}
+                      />
+                    ))}
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="unlocked" className="mt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {videos.filter(v => v.is_unlocked).map((video) => (
+                    <VideoCard 
+                      key={video.id} 
+                      video={video} 
+                      onVideoUnlocked={handleVideoUnlocked}
+                    />
+                  ))}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="locked" className="mt-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {videos.filter(v => !v.is_unlocked).map((video) => (
+                    <VideoCard 
+                      key={video.id} 
+                      video={video} 
+                      onVideoUnlocked={handleVideoUnlocked}
+                    />
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
           </TabsContent>
           
-          <TabsContent value="unlocked" className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {videos.filter(v => v.is_unlocked).map((video) => (
-                <VideoCard 
-                  key={video.id} 
-                  video={video} 
-                  onVideoUnlocked={handleVideoUnlocked}
-                />
-              ))}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="locked" className="mt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {videos.filter(v => !v.is_unlocked).map((video) => (
-                <VideoCard 
-                  key={video.id} 
-                  video={video} 
-                  onVideoUnlocked={handleVideoUnlocked}
-                />
-              ))}
-            </div>
+          <TabsContent value="clubs" className="mt-6">
+            <ClubFollowing />
           </TabsContent>
         </Tabs>
       </div>
@@ -245,4 +264,3 @@ const PlayerDashboard = () => {
 };
 
 export default PlayerDashboard;
-

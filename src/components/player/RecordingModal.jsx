@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { videoService, adminService } from '../../lib/api';
+import { videoService, clubService } from '../../lib/api'; // Changed adminService to clubService
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,6 +42,7 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
   const [clubs, setClubs] = useState([]);
   const [courts, setCourts] = useState([]);
   const [loadingClubs, setLoadingClubs] = useState(false);
+  const [loadingCourts, setLoadingCourts] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [recordingTime, setRecordingTime] = useState(0);
@@ -66,7 +67,7 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
   const loadClubs = async () => {
     try {
       setLoadingClubs(true);
-      const response = await adminService.getAllClubs();
+      const response = await clubService.getAllClubs(); // Changed adminService to clubService
       setClubs(response.data.clubs || []);
     } catch (error) {
       console.error('Error loading clubs:', error);
@@ -78,17 +79,23 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
 
   const loadCourts = async (clubId) => {
     try {
-      // Pour simplifier, on va simuler les terrains
-      // Dans une vraie implémentation, il faudrait un endpoint pour récupérer les terrains d'un club
-      const simulatedCourts = [
-        { id: 1, name: 'Terrain 1', club_id: clubId },
-        { id: 2, name: 'Terrain 2', club_id: clubId },
-        { id: 3, name: 'Terrain 3', club_id: clubId },
-      ];
-      setCourts(simulatedCourts);
+      setLoadingCourts(true);
+      setError(''); // Clear any previous errors
+      
+      // Récupérer les terrains réels depuis le backend
+      const response = await clubService.getClubCourts(clubId);
+      setCourts(response.data.courts || []);
+      
+      // Si aucun terrain n'est trouvé, afficher un message informatif
+      if (!response.data.courts || response.data.courts.length === 0) {
+        setError('Aucun terrain trouvé pour ce club');
+      }
     } catch (error) {
       console.error('Error loading courts:', error);
       setError('Erreur lors du chargement des terrains');
+      setCourts([]);
+    } finally {
+      setLoadingCourts(false);
     }
   };
 
@@ -245,9 +252,10 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
                 <Select 
                   value={recordingData.club_id} 
                   onValueChange={(value) => setRecordingData(prev => ({ ...prev, club_id: value }))}
+                  disabled={loadingClubs}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez un club" />
+                    <SelectValue placeholder={loadingClubs ? "Chargement..." : "Sélectionnez un club"} />
                   </SelectTrigger>
                   <SelectContent>
                     {clubs.map((club) => (
@@ -264,10 +272,18 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
                 <Select 
                   value={recordingData.court_id} 
                   onValueChange={(value) => setRecordingData(prev => ({ ...prev, court_id: value }))}
-                  disabled={!recordingData.club_id}
+                  disabled={!recordingData.club_id || loadingCourts}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez un terrain" />
+                    <SelectValue placeholder={
+                      !recordingData.club_id 
+                        ? "Sélectionnez d'abord un club" 
+                        : loadingCourts 
+                        ? "Chargement des terrains..." 
+                        : courts.length === 0 
+                        ? "Aucun terrain disponible"
+                        : "Sélectionnez un terrain"
+                    } />
                   </SelectTrigger>
                   <SelectContent>
                     {courts.map((court) => (
@@ -304,7 +320,7 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
                 </Button>
                 <Button 
                   onClick={handleStartRecording} 
-                  disabled={isLoading || !recordingData.club_id || !recordingData.court_id}
+                  disabled={isLoading || !recordingData.club_id || !recordingData.court_id || loadingCourts}
                 >
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -366,4 +382,3 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
 };
 
 export default RecordingModal;
-

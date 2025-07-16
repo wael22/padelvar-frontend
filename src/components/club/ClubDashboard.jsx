@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { clubService } from '../../lib/api';
 import Navbar from '../common/Navbar';
@@ -25,7 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Users,
-  Video as VideoIcon,
+  Video,
   Coins,
   Plus,
   Play,
@@ -33,12 +34,8 @@ import {
   Unlock,
   Calendar,
   Clock,
-  User as UserIcon,
-  Loader2,
-  MapPin,
-  Phone,
-  Mail,
-  Tennis
+  User,
+  Loader2
 } from 'lucide-react';
 
 const ClubDashboard = () => {
@@ -68,8 +65,12 @@ const ClubDashboard = () => {
   const loadDashboard = async () => {
     try {
       setLoading(true);
-      const response = await clubService.getDashboard();
-      setDashboardData(response.data);
+      const dashboardResponse = await clubService.getDashboard();
+      
+      setDashboardData({
+        ...dashboardResponse.data,
+        courts: dashboardResponse.data.courts || []
+      });
     } catch (error) {
       setError('Erreur lors du chargement du tableau de bord');
       console.error('Error loading dashboard:', error);
@@ -145,26 +146,9 @@ const ClubDashboard = () => {
           <h1 className="text-3xl font-bold text-gray-900">
             {dashboardData.club?.name || 'Club de Padel'}
           </h1>
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            {dashboardData.club?.address && (
-              <div className="flex items-center text-gray-600">
-                <MapPin className="h-5 w-5 mr-2" />
-                <span>{dashboardData.club.address}</span>
-              </div>
-            )}
-            {dashboardData.club?.phone_number && (
-              <div className="flex items-center text-gray-600">
-                <Phone className="h-5 w-5 mr-2" />
-                <span>{dashboardData.club.phone_number}</span>
-              </div>
-            )}
-            {dashboardData.club?.email && (
-              <div className="flex items-center text-gray-600">
-                <Mail className="h-5 w-5 mr-2" />
-                <span>{dashboardData.club.email}</span>
-              </div>
-            )}
-          </div>
+          <p className="text-gray-600 mt-2">
+            Gérez vos joueurs et suivez l'activité de votre club
+          </p>
         </div>
 
         {/* Statistiques */}
@@ -182,7 +166,7 @@ const ClubDashboard = () => {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Vidéos Enregistrées</CardTitle>
-              <VideoIcon className="h-4 w-4 text-muted-foreground" />
+              <Video className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{dashboardData.stats.total_videos}</div>
@@ -198,11 +182,11 @@ const ClubDashboard = () => {
               <div className="text-2xl font-bold">{dashboardData.stats.total_credits_distributed}</div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Terrains</CardTitle>
-              <Tennis className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xl">🎾</span>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{dashboardData.stats.total_courts}</div>
@@ -311,8 +295,7 @@ const ClubDashboard = () => {
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          {/* Miniature de la caméra */}
-                          <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                          <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden relative">
                             <img
                               src={court.camera_url}
                               alt={`Caméra ${court.name}`}
@@ -326,13 +309,21 @@ const ClubDashboard = () => {
                               className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500 hidden"
                             >
                               <div className="text-center">
-                                <VideoIcon className="h-8 w-8 mx-auto mb-2" />
+                                <Video className="h-8 w-8 mx-auto mb-2" />
                                 <p className="text-sm">Caméra non disponible</p>
                               </div>
                             </div>
+                            <div className="absolute top-2 right-2">
+                              <Badge variant="destructive" className="flex items-center">
+                                <span className="relative flex h-2 w-2 mr-1">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                </span>
+                                LIVE
+                              </Badge>
+                            </div>
                           </div>
                           
-                          {/* Informations de la caméra */}
                           <div className="space-y-2">
                             <div className="flex items-center justify-between text-sm">
                               <span className="text-gray-600">Statut caméra:</span>
@@ -345,7 +336,6 @@ const ClubDashboard = () => {
                             </div>
                           </div>
                           
-                          {/* Actions */}
                           <div className="flex space-x-2">
                             <Button 
                               size="sm" 
@@ -377,7 +367,7 @@ const ClubDashboard = () => {
               <CardContent>
                 {dashboardData.videos.length === 0 ? (
                   <div className="text-center py-8">
-                    <VideoIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <Video className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">
                       Aucune vidéo enregistrée
                     </h3>
@@ -397,56 +387,53 @@ const ClubDashboard = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {dashboardData.videos.map((video) => {
-                        const player = dashboardData.players.find(p => p.id === video.user_id);
-                        return (
-                          <TableRow key={video.id}>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">{video.title}</div>
-                                {video.description && (
-                                  <div className="text-sm text-gray-500 line-clamp-1">
-                                    {video.description}
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center space-x-2">
-                                <UserIcon className="h-4 w-4 text-gray-400" />
-                                <span>{player ? player.name : 'Joueur inconnu'}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {video.is_unlocked ? (
-                                <Badge variant="default" className="bg-green-500">
-                                  <Unlock className="h-3 w-3 mr-1" />
-                                  Déverrouillée
-                                </Badge>
-                              ) : (
-                                <Badge variant="secondary">
-                                  <Lock className="h-3 w-3 mr-1" />
-                                  Verrouillée
-                                </Badge>
+                      {dashboardData.videos.map((video) => (
+                        <TableRow key={video.id}>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{video.title}</div>
+                              {video.description && (
+                                <div className="text-sm text-gray-500 line-clamp-1">
+                                  {video.description}
+                                </div>
                               )}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center space-x-2">
-                                <Clock className="h-4 w-4 text-gray-400" />
-                                <span>{formatDuration(video.duration)}</span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center space-x-2">
-                                <Calendar className="h-4 w-4 text-gray-400" />
-                                <span className="text-sm">
-                                  {formatDate(video.recorded_at || video.created_at)}
-                                </span>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <User className="h-4 w-4 text-gray-400" />
+                              <span>{video.player_name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {video.is_unlocked ? (
+                              <Badge variant="default" className="bg-green-500">
+                                <Unlock className="h-3 w-3 mr-1" />
+                                Déverrouillée
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">
+                                <Lock className="h-3 w-3 mr-1" />
+                                Verrouillée
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Clock className="h-4 w-4 text-gray-400" />
+                              <span>{formatDuration(video.duration)}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center space-x-2">
+                              <Calendar className="h-4 w-4 text-gray-400" />
+                              <span className="text-sm">
+                                {formatDate(video.recorded_at || video.created_at)}
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 )}
@@ -507,3 +494,4 @@ const ClubDashboard = () => {
 };
 
 export default ClubDashboard;
+

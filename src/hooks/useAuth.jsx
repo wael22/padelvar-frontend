@@ -18,19 +18,25 @@ export const AuthProvider = ({ children }) => {
 
   // Vérifier si l'utilisateur est connecté au chargement
   useEffect(() => {
-    checkAuthStatus();
+    const initializeAuth = async () => {
+      try {
+        const response = await authService.getCurrentUser();
+        setUser(response.data.user);
+      } catch (error) {
+        // Si l'utilisateur n'est pas authentifié (401), c'est normal, ne pas boucler
+        if (error.response?.status === 401) {
+          setUser(null);
+        } else {
+          // Gérer d'autres erreurs de manière appropriée
+          console.error("Erreur lors de la vérification du statut d'authentification:", error);
+          setUser(null);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    initializeAuth();
   }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      const response = await authService.getCurrentUser();
-      setUser(response.data.user);
-    } catch (error) {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const login = async (credentials) => {
     try {
@@ -98,7 +104,6 @@ export const AuthProvider = ({ children }) => {
     isAdmin,
     isPlayer,
     isClub,
-    checkAuthStatus,
   };
 
   return (
@@ -107,4 +112,3 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-

@@ -42,10 +42,11 @@ import {
   Trash2, 
   Coins,
   Loader2,
-  Search
+  Search,
+  RefreshCw
 } from 'lucide-react';
 
-const UserManagement = ({ onStatsUpdate }) => {
+const UserManagement = ({ onStatsUpdate, refreshTrigger }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -68,6 +69,13 @@ const UserManagement = ({ onStatsUpdate }) => {
   useEffect(() => {
     loadUsers();
   }, []);
+
+  // Recharger les utilisateurs quand refreshTrigger change
+  useEffect(() => {
+    if (refreshTrigger) {
+      loadUsers();
+    }
+  }, [refreshTrigger]);
 
   const loadUsers = async () => {
     try {
@@ -225,104 +233,111 @@ const UserManagement = ({ onStatsUpdate }) => {
               </CardDescription>
             </div>
             
-            <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nouvel Utilisateur
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Créer un Utilisateur</DialogTitle>
-                  <DialogDescription>
-                    Ajoutez un nouvel utilisateur à la plateforme
-                  </DialogDescription>
-                </DialogHeader>
-                
-                <form onSubmit={handleCreateUser} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nom complet</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      required
-                    />
-                  </div>
+            <div className="flex space-x-2">
+              <Button variant="outline" onClick={loadUsers} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Actualiser
+              </Button>
+              
+              <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouvel Utilisateur
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Créer un Utilisateur</DialogTitle>
+                    <DialogDescription>
+                      Ajoutez un nouvel utilisateur à la plateforme
+                    </DialogDescription>
+                  </DialogHeader>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Rôle</Label>
-                    <Select 
-                      value={formData.role} 
-                      onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="player">Joueur</SelectItem>
-                        <SelectItem value="club">Club</SelectItem>
-                        <SelectItem value="super_admin">Super Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Téléphone</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone_number}
-                      onChange={(e) => setFormData(prev => ({ ...prev, phone_number: e.target.value }))}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="credits">Crédits initiaux</Label>
-                    <Input
-                      id="credits"
-                      type="number"
-                      min="0"
-                      value={formData.credits_balance}
-                      onChange={(e) => setFormData(prev => ({ ...prev, credits_balance: parseInt(e.target.value) || 0 }))}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Mot de passe (optionnel)</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                    />
-                  </div>
-                  
-                  <div className="flex justify-end space-x-2">
-                    <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
-                      Annuler
-                    </Button>
-                    <Button type="submit" disabled={isSubmitting}>
-                      {isSubmitting ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : null}
-                      Créer
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+                  <form onSubmit={handleCreateUser} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Nom complet</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="role">Rôle</Label>
+                      <Select 
+                        value={formData.role} 
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="player">Joueur</SelectItem>
+                          <SelectItem value="club">Club</SelectItem>
+                          <SelectItem value="super_admin">Super Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Téléphone</Label>
+                      <Input
+                        id="phone"
+                        value={formData.phone_number}
+                        onChange={(e) => setFormData(prev => ({ ...prev, phone_number: e.target.value }))}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="credits">Crédits initiaux</Label>
+                      <Input
+                        id="credits"
+                        type="number"
+                        min="0"
+                        value={formData.credits_balance}
+                        onChange={(e) => setFormData(prev => ({ ...prev, credits_balance: parseInt(e.target.value) || 0 }))}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Mot de passe (optionnel)</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={formData.password}
+                        onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                      />
+                    </div>
+                    
+                    <div className="flex justify-end space-x-2">
+                      <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
+                        Annuler
+                      </Button>
+                      <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : null}
+                        Créer
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </CardHeader>
         
@@ -517,4 +532,3 @@ const UserManagement = ({ onStatsUpdate }) => {
 };
 
 export default UserManagement;
-
