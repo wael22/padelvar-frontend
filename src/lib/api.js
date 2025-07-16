@@ -9,15 +9,26 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-});
+} );
+
+// Variable pour éviter les redirections multiples
+let isRedirecting = false;
 
 // Intercepteur pour gérer les erreurs globalement
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Rediriger vers la page de connexion si non authentifié
-      window.location.href = '/login';
+      // Éviter les redirections multiples et ne pas rediriger si on est déjà sur la page de login
+      if (!isRedirecting && window.location.pathname !== '/login') {
+        isRedirecting = true;
+        // Rediriger vers la page de connexion si non authentifié
+        window.location.href = '/login';
+        // Réinitialiser le flag après un délai
+        setTimeout(() => {
+          isRedirecting = false;
+        }, 1000);
+      }
     }
     return Promise.reject(error);
   }
