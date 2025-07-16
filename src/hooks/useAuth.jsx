@@ -15,10 +15,14 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Vérifier si l'utilisateur est connecté au chargement
   useEffect(() => {
     const initializeAuth = async () => {
+      // Éviter les appels multiples
+      if (isInitialized) return;
+      
       try {
         const response = await authService.getCurrentUser();
         setUser(response.data.user);
@@ -33,14 +37,17 @@ export const AuthProvider = ({ children }) => {
         }
       } finally {
         setLoading(false);
+        setIsInitialized(true);
       }
     };
+    
     initializeAuth();
-  }, []);
+  }, [isInitialized]);
 
   const login = async (credentials) => {
     try {
       setError(null);
+      setLoading(true);
       const response = await authService.login(credentials);
       setUser(response.data.user);
       return { success: true, user: response.data.user };
@@ -48,12 +55,15 @@ export const AuthProvider = ({ children }) => {
       const errorMessage = error.response?.data?.error || 'Erreur de connexion';
       setError(errorMessage);
       return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
     }
   };
 
   const register = async (userData) => {
     try {
       setError(null);
+      setLoading(true);
       const response = await authService.register(userData);
       setUser(response.data.user);
       return { success: true, user: response.data.user };
@@ -61,22 +71,28 @@ export const AuthProvider = ({ children }) => {
       const errorMessage = error.response?.data?.error || 'Erreur d\'inscription';
       setError(errorMessage);
       return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = async () => {
     try {
+      setLoading(true);
       await authService.logout();
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
     } finally {
       setUser(null);
+      setLoading(false);
+      setIsInitialized(false);
     }
   };
 
   const updateProfile = async (profileData) => {
     try {
       setError(null);
+      setLoading(true);
       const response = await authService.updateProfile(profileData);
       setUser(response.data.user);
       return { success: true, user: response.data.user };
@@ -84,6 +100,8 @@ export const AuthProvider = ({ children }) => {
       const errorMessage = error.response?.data?.error || 'Erreur de mise à jour du profil';
       setError(errorMessage);
       return { success: false, error: errorMessage };
+    } finally {
+      setLoading(false);
     }
   };
 
