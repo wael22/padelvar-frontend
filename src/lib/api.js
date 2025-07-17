@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Configuration de base pour l'API
-const API_BASE_URL = 'http://localhost:5000/api'; // <--- ASSUREZ-VOUS QUE C'EST BIEN CETTE LIGNE
+const API_BASE_URL = 'https://padelvar-backend.onrender.com/api';  // Adresse de production
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -9,7 +9,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-} );
+});
 
 // Variable pour éviter les redirections multiples
 let isRedirecting = false;
