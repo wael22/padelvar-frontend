@@ -1,30 +1,24 @@
 import axios from 'axios';
 
-// Configuration de base pour l'API
-const API_BASE_URL = 'https://padelvar-backend.onrender.com/api';  // Adresse de production
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true, // Pour inclure les cookies de session
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
-});
+} );
 
-// Variable pour éviter les redirections multiples
 let isRedirecting = false;
 
-// Intercepteur pour gérer les erreurs globalement
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Éviter les redirections multiples et ne pas rediriger si on est déjà sur la page de login
       if (!isRedirecting && window.location.pathname !== '/login') {
         isRedirecting = true;
-        // Rediriger vers la page de connexion si non authentifié
         window.location.href = '/login';
-        // Réinitialiser le flag après un délai
         setTimeout(() => {
           isRedirecting = false;
         }, 1000);
@@ -34,7 +28,6 @@ api.interceptors.response.use(
   }
 );
 
-// Services d'authentification
 export const authService = {
   register: (userData) => api.post('/auth/register', userData),
   login: (credentials) => api.post('/auth/login', credentials),
@@ -43,7 +36,6 @@ export const authService = {
   updateProfile: (profileData) => api.put('/auth/update-profile', profileData),
 };
 
-// Services pour les vidéos
 export const videoService = {
   getMyVideos: () => api.get('/videos/my-videos'),
   startRecording: (data) => api.post('/videos/record', data),
@@ -54,9 +46,13 @@ export const videoService = {
   buyCredits: (credits, paymentMethod) => api.post('/videos/buy-credits', { credits, payment_method: paymentMethod }),
   scanQrCode: (qrCode) => api.post('/videos/qr-scan', { qr_code: qrCode }),
   getCameraStream: (courtId) => api.get(`/videos/courts/${courtId}/camera-stream`),
+  
+  // ====================================================================
+  // NOUVELLE LIGNE AJOUTÉE ICI
+  // ====================================================================
+  getCourtsForClub: (clubId) => api.get(`/videos/clubs/${clubId}/courts`),
 };
 
-// Services pour l'administration
 export const adminService = {
   getAllUsers: () => api.get('/admin/users'),
   createUser: (userData) => api.post('/admin/users', userData),
@@ -72,12 +68,9 @@ export const adminService = {
   deleteCourt: (courtId) => api.delete(`/admin/courts/${courtId}`),
   getAllVideos: () => api.get('/admin/videos'),
   addCredits: (userId, credits) => api.post(`/admin/users/${userId}/credits`, { credits }),
-  // Nouvelles fonctionnalités pour l'historique
-  getClubHistory: (clubId) => api.get(`/admin/clubs/${clubId}/history`),
   getAllClubsHistory: () => api.get('/admin/clubs/history/all'),
 };
 
-// Services pour les joueurs
 export const playerService = {
   getAvailableClubs: () => api.get('/players/clubs/available'),
   followClub: (clubId) => api.post(`/players/clubs/${clubId}/follow`),
@@ -85,27 +78,18 @@ export const playerService = {
   getFollowedClubs: () => api.get('/players/clubs/followed'),
 };
 
-// Services pour les clubs
 export const clubService = {
   getDashboard: () => api.get('/clubs/dashboard'),
-  getPlayers: () => api.get('/clubs/players'),
-  getPlayerVideos: (playerId) => api.get(`/clubs/players/${playerId}/videos`),
-  addCreditsToPlayer: (playerId, credits) => api.post(`/clubs/players/${playerId}/add-credits`, { credits }),
-  getClubVideos: () => api.get('/clubs/videos'),
   getClubInfo: () => api.get('/clubs/info'),
-  updateClubInfo: (clubData) => api.put('/clubs/info', clubData),
   getCourts: () => api.get('/clubs/courts'),
-  updateCourt: (courtId, courtData) => api.put(`/clubs/courts/${courtId}`, courtData),
-  deleteCourt: (courtId) => api.delete(`/clubs/courts/${courtId}`),
-  createPlayer: (playerData) => api.post('/clubs/players', playerData),
-  updatePlayer: (playerId, playerData) => api.put(`/clubs/players/${playerId}`, playerData),
+  getClubVideos: () => api.get('/clubs/videos'),
   getAllClubs: () => api.get('/clubs/all'),
-  getClubCourts: (clubId) => api.get(`/clubs/${clubId}/courts`),
-  // Nouvelles fonctionnalités
-  getFollowers: () => api.get('/clubs/followers'),
-  updateFollower: (playerId, playerData) => api.put(`/clubs/followers/${playerId}/update`, playerData),
-  addCreditsToFollower: (playerId, credits) => api.post(`/clubs/followers/${playerId}/add-credits`, { credits }),
   getClubHistory: () => api.get('/clubs/history'),
+  getFollowers: () => api.get('/clubs/followers'),
+  updatePlayer: (playerId, playerData) => api.put(`/clubs/${playerId}`, playerData),
+  addCreditsToPlayer: (playerId, credits) => api.post(`/clubs/${playerId}/add-credits`, { credits }),
+  updateFollower: (playerId, playerData) => clubService.updatePlayer(playerId, playerData),
+  addCreditsToFollower: (playerId, credits) => clubService.addCreditsToPlayer(playerId, credits),
 };
 
 export default api;

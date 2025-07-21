@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { videoService, clubService } from '../../lib/api'; // Changed adminService to clubService
+// MODIFIÉ : On importe playerService car c'est lui qui connaît les clubs suivis
+import { videoService, playerService } from '../../lib/api'; 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,12 +25,12 @@ import {
   Square, 
   QrCode, 
   Loader2,
-  Camera,
-  Clock
+  Camera
 } from 'lucide-react';
 
+// MODIFIÉ : J'ai renommé le composant pour qu'il corresponde à son fichier
 const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
-  const [step, setStep] = useState('setup'); // 'setup', 'recording', 'stopping'
+  const [step, setStep] = useState('setup');
   const [recordingData, setRecordingData] = useState({
     title: '',
     description: '',
@@ -39,7 +40,8 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
     recording_id: null,
     startTime: null
   });
-  const [clubs, setClubs] = useState([]);
+  // Cet état contient maintenant uniquement les clubs suivis
+  const [followedClubs, setFollowedClubs] = useState([]);
   const [courts, setCourts] = useState([]);
   const [loadingClubs, setLoadingClubs] = useState(false);
   const [loadingCourts, setLoadingCourts] = useState(false);
@@ -47,14 +49,13 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
   const [error, setError] = useState('');
   const [recordingTime, setRecordingTime] = useState(0);
 
-  // Charger les clubs au montage du composant
   useEffect(() => {
     if (isOpen) {
-      loadClubs();
+      // La fonction est renommée pour plus de clarté
+      loadFollowedClubs();
     }
   }, [isOpen]);
 
-  // Charger les terrains quand un club est sélectionné
   useEffect(() => {
     if (recordingData.club_id) {
       loadCourts(recordingData.club_id);
@@ -64,14 +65,19 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
     }
   }, [recordingData.club_id]);
 
-  const loadClubs = async () => {
+  // ====================================================================
+  // CORRECTION PRINCIPALE ICI
+  // ====================================================================
+  const loadFollowedClubs = async () => {
     try {
       setLoadingClubs(true);
-      const response = await clubService.getAllClubs(); // Changed adminService to clubService
-      setClubs(response.data.clubs || []);
+      // MODIFIÉ : On appelle playerService.getFollowedClubs()
+      // C'est la fonction qui renvoie UNIQUEMENT les clubs que l'utilisateur suit.
+      const response = await playerService.getFollowedClubs();
+      setFollowedClubs(response.data.clubs || []);
     } catch (error) {
-      console.error('Error loading clubs:', error);
-      setError('Erreur lors du chargement des clubs');
+      console.error('Error loading followed clubs:', error);
+      setError('Erreur lors du chargement de vos clubs suivis');
     } finally {
       setLoadingClubs(false);
     }
@@ -80,13 +86,12 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
   const loadCourts = async (clubId) => {
     try {
       setLoadingCourts(true);
-      setError(''); // Clear any previous errors
-      
-      // Récupérer les terrains réels depuis le backend
-      const response = await clubService.getClubCourts(clubId);
+      setError('');
+      // MODIFIÉ : On utilise videoService pour les terrains, car c'est plus logique
+      // pour une action liée à la vidéo. Assurez-vous que la route existe.
+      const response = await videoService.getCourtsForClub(clubId); // Renommé pour clarté
       setCourts(response.data.courts || []);
       
-      // Si aucun terrain n'est trouvé, afficher un message informatif
       if (!response.data.courts || response.data.courts.length === 0) {
         setError('Aucun terrain trouvé pour ce club');
       }
@@ -98,8 +103,10 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
       setLoadingCourts(false);
     }
   };
+  // ====================================================================
+  // FIN DE LA CORRECTION PRINCIPALE
+  // ====================================================================
 
-  // Timer pour l'enregistrement
   useEffect(() => {
     let interval;
     if (step === 'recording' && recordingData.startTime) {
@@ -111,37 +118,21 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
   }, [step, recordingData.startTime]);
 
   const handleStartRecording = async () => {
-    // Vérifications obligatoires
-    if (!recordingData.club_id) {
-      setError('Veuillez sélectionner un club');
+    if (!recordingData.club_id || !recordingData.court_id) {
+      setError('Veuillez sélectionner un club et un terrain');
       return;
     }
-    
-    if (!recordingData.court_id) {
-      setError('Veuillez sélectionner un terrain');
-      return;
-    }
-
     setIsLoading(true);
     setError('');
-
     try {
       const response = await videoService.startRecording({
-        club_id: recordingData.club_id,
         court_id: recordingData.court_id,
         qr_code: recordingData.qr_code || undefined
       });
-
-      setRecordingData(prev => ({
-        ...prev,
-        recording_id: response.data.recording_id,
-        startTime: Date.now()
-      }));
-      
+      setRecordingData(prev => ({ ...prev, recording_id: response.data.recording_id, startTime: Date.now() }));
       setStep('recording');
     } catch (error) {
-      setError(error.response?.data?.error || 'Erreur lors du démarrage de l\'enregistrement');
-      console.error('Error starting recording:', error);
+      setError(error.response?.data?.error || 'Erreur lors du démarrage');
     } finally {
       setIsLoading(false);
     }
@@ -150,21 +141,16 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
   const handleStopRecording = async () => {
     setIsLoading(true);
     setError('');
-
     try {
-      const response = await videoService.stopRecording({
+      await videoService.stopRecording({
         recording_id: recordingData.recording_id,
         title: recordingData.title || `Match du ${new Date().toLocaleDateString('fr-FR')}`,
         description: recordingData.description,
-        court_id: recordingData.court_id
       });
-
-      // Fermer le modal et actualiser la liste des vidéos
       onVideoCreated();
       handleClose();
     } catch (error) {
-      setError(error.response?.data?.error || 'Erreur lors de l\'arrêt de l\'enregistrement');
-      console.error('Error stopping recording:', error);
+      setError(error.response?.data?.error || 'Erreur lors de l\'arrêt');
     } finally {
       setIsLoading(false);
     }
@@ -172,18 +158,10 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
 
   const handleClose = () => {
     setStep('setup');
-    setRecordingData({
-      title: '',
-      description: '',
-      club_id: '',
-      court_id: '',
-      qr_code: '',
-      recording_id: null,
-      startTime: null
-    });
+    setRecordingData({ title: '', description: '', club_id: '', court_id: '', qr_code: '', recording_id: null, startTime: null });
     setRecordingTime(0);
     setError('');
-    setClubs([]);
+    setFollowedClubs([]);
     setCourts([]);
     onClose();
   };
@@ -194,13 +172,6 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleQRScan = () => {
-    // Simulation du scan QR code
-    const simulatedQR = `court_${Math.random().toString(36).substr(2, 9)}`;
-    setRecordingData(prev => ({ ...prev, qr_code: simulatedQR }));
-    alert(`QR Code scanné: ${simulatedQR}`);
-  };
-
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
@@ -208,126 +179,65 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
           <DialogTitle>
             {step === 'setup' && 'Nouvel Enregistrement'}
             {step === 'recording' && 'Enregistrement en cours'}
-            {step === 'stopping' && 'Arrêt de l\'enregistrement'}
           </DialogTitle>
           <DialogDescription>
             {step === 'setup' && 'Configurez votre enregistrement de match'}
             {step === 'recording' && 'Votre match est en cours d\'enregistrement'}
-            {step === 'stopping' && 'Finalisation de votre vidéo'}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+          {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
 
           {step === 'setup' && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="title">Titre du match (optionnel)</Label>
-                <Input
-                  id="title"
-                  placeholder="Ex: Match contre équipe X"
-                  value={recordingData.title}
-                  onChange={(e) => setRecordingData(prev => ({ ...prev, title: e.target.value }))}
-                />
+                <Input id="title" placeholder="Ex: Match contre équipe X" value={recordingData.title} onChange={(e) => setRecordingData(prev => ({ ...prev, title: e.target.value }))} />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="description">Description (optionnel)</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Notes sur le match..."
-                  value={recordingData.description}
-                  onChange={(e) => setRecordingData(prev => ({ ...prev, description: e.target.value }))}
-                  rows={3}
-                />
+                <Textarea id="description" placeholder="Notes sur le match..." value={recordingData.description} onChange={(e) => setRecordingData(prev => ({ ...prev, description: e.target.value }))} rows={3} />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="club">Club *</Label>
-                <Select 
-                  value={recordingData.club_id} 
-                  onValueChange={(value) => setRecordingData(prev => ({ ...prev, club_id: value }))}
-                  disabled={loadingClubs}
-                >
+                <Select value={recordingData.club_id} onValueChange={(value) => setRecordingData(prev => ({ ...prev, club_id: value }))} disabled={loadingClubs}>
                   <SelectTrigger>
                     <SelectValue placeholder={loadingClubs ? "Chargement..." : "Sélectionnez un club"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {clubs.map((club) => (
-                      <SelectItem key={club.id} value={club.id.toString()}>
-                        {club.name}
-                      </SelectItem>
+                    {/* MODIFIÉ : On utilise la liste des clubs suivis */}
+                    {followedClubs.map((club) => (
+                      <SelectItem key={club.id} value={club.id.toString()}>{club.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="court">Terrain *</Label>
-                <Select 
-                  value={recordingData.court_id} 
-                  onValueChange={(value) => setRecordingData(prev => ({ ...prev, court_id: value }))}
-                  disabled={!recordingData.club_id || loadingCourts}
-                >
+                <Select value={recordingData.court_id} onValueChange={(value) => setRecordingData(prev => ({ ...prev, court_id: value }))} disabled={!recordingData.club_id || loadingCourts}>
                   <SelectTrigger>
-                    <SelectValue placeholder={
-                      !recordingData.club_id 
-                        ? "Sélectionnez d'abord un club" 
-                        : loadingCourts 
-                        ? "Chargement des terrains..." 
-                        : courts.length === 0 
-                        ? "Aucun terrain disponible"
-                        : "Sélectionnez un terrain"
-                    } />
+                    <SelectValue placeholder={!recordingData.club_id ? "Sélectionnez d'abord un club" : loadingCourts ? "Chargement..." : "Sélectionnez un terrain"} />
                   </SelectTrigger>
                   <SelectContent>
                     {courts.map((court) => (
-                      <SelectItem key={court.id} value={court.id.toString()}>
-                        {court.name}
-                      </SelectItem>
+                      <SelectItem key={court.id} value={court.id.toString()}>{court.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label>QR Code du terrain (optionnel)</Label>
                 <div className="flex space-x-2">
-                  <Input
-                    placeholder="Code du terrain"
-                    value={recordingData.qr_code}
-                    onChange={(e) => setRecordingData(prev => ({ ...prev, qr_code: e.target.value }))}
-                  />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={handleQRScan}
-                    className="flex-shrink-0"
-                  >
-                    <QrCode className="h-4 w-4" />
-                  </Button>
+                  <Input placeholder="Code du terrain" value={recordingData.qr_code} onChange={(e) => setRecordingData(prev => ({ ...prev, qr_code: e.target.value }))} />
+                  <Button type="button" variant="outline"><QrCode className="h-4 w-4" /></Button>
                 </div>
               </div>
-
               <div className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline" onClick={handleClose}>
-                  Annuler
-                </Button>
-                <Button 
-                  onClick={handleStartRecording} 
-                  disabled={isLoading || !recordingData.club_id || !recordingData.court_id || loadingCourts}
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Play className="h-4 w-4 mr-2" />
-                  )}
-                  Démarrer l'enregistrement
+                <Button variant="outline" onClick={handleClose}>Annuler</Button>
+                <Button onClick={handleStartRecording} disabled={isLoading || !recordingData.club_id || !recordingData.court_id}>
+                  {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Play className="h-4 w-4 mr-2" />}
+                  Démarrer
                 </Button>
               </div>
             </>
@@ -337,41 +247,17 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
             <div className="text-center space-y-6">
               <div className="flex items-center justify-center">
                 <div className="relative">
-                  <div className="w-24 h-24 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
-                    <Camera className="h-12 w-12 text-white" />
-                  </div>
+                  <div className="w-24 h-24 bg-red-500 rounded-full flex items-center justify-center animate-pulse"><Camera className="h-12 w-12 text-white" /></div>
                   <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 rounded-full animate-ping"></div>
                 </div>
               </div>
-
               <div>
-                <div className="text-3xl font-mono font-bold text-red-600">
-                  {formatTime(recordingTime)}
-                </div>
+                <div className="text-3xl font-mono font-bold text-red-600">{formatTime(recordingTime)}</div>
                 <p className="text-gray-600 mt-2">Enregistrement en cours...</p>
               </div>
-
-              {recordingData.title && (
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <p className="font-medium">{recordingData.title}</p>
-                  {recordingData.description && (
-                    <p className="text-sm text-gray-600 mt-1">{recordingData.description}</p>
-                  )}
-                </div>
-              )}
-
-              <Button 
-                onClick={handleStopRecording} 
-                disabled={isLoading}
-                variant="destructive"
-                size="lg"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Square className="h-4 w-4 mr-2" />
-                )}
-                Arrêter l'enregistrement
+              <Button onClick={handleStopRecording} disabled={isLoading} variant="destructive" size="lg">
+                {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Square className="h-4 w-4 mr-2" />}
+                Arrêter
               </Button>
             </div>
           )}

@@ -1,188 +1,156 @@
 import { useState, useEffect } from 'react';
 import { playerService } from '../../lib/api';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Heart, 
-  HeartOff, 
-  MapPin, 
-  Phone, 
-  Mail, 
-  Loader2,
-  Users,
-  Calendar
-} from 'lucide-react';
+import { Loader2, Heart, MapPin, Phone, Mail, Calendar } from 'lucide-react';
 
-const ClubFollowing = () => {
-  const [clubs, setClubs] = useState([]);
+const ClubFollowing = ({ onFollowChange }) => {
+  // MODIFIÉ : Un seul état pour tous les clubs
+  const [allClubs, setAllClubs] = useState([]);
+  // MODIFIÉ : Un état pour savoir quels clubs sont suivis
+  const [followedIds, setFollowedIds] = useState(new Set());
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [actionLoading, setActionLoading] = useState({});
+  const [followError, setFollowError] = useState('');
 
   useEffect(() => {
-    loadAvailableClubs();
+    loadClubs();
   }, []);
 
-  const loadAvailableClubs = async () => {
+  // MODIFIÉ : Fonction de chargement simplifiée
+  const loadClubs = async () => {
     try {
       setLoading(true);
-      const response = await playerService.getAvailableClubs();
-      setClubs(response.data.clubs);
-    } catch (error) {
-      setError('Erreur lors du chargement des clubs');
-      console.error('Error loading clubs:', error);
+      setFollowError('');
+      // On récupère les deux listes en parallèle
+      const [availableRes, followedRes] = await Promise.all([
+        playerService.getAvailableClubs(),
+        playerService.getFollowedClubs(),
+      ]);
+
+      const followed = followedRes.data.clubs || [];
+      const available = availableRes.data.clubs || [];
+
+      // On crée un Set (ensemble) des IDs des clubs suivis pour une recherche rapide
+      const newFollowedIds = new Set(followed.map(c => c.id));
+      setFollowedIds(newFollowedIds);
+
+      // On fusionne les deux listes sans doublons et on les stocke
+      const combinedClubs = [...followed, ...available.filter(c => !newFollowedIds.has(c.id))];
+      setAllClubs(combinedClubs);
+
+    } catch (err) {
+      setError('Erreur lors du chargement des clubs.');
+      console.error('Error loading clubs:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFollowToggle = async (clubId, isFollowed) => {
+  const handleFollowToggle = async (clubId, isCurrentlyFollowing) => {
     try {
-      setActionLoading(prev => ({ ...prev, [clubId]: true }));
-      
-      if (isFollowed) {
+      setFollowError('');
+      if (isCurrentlyFollowing) {
         await playerService.unfollowClub(clubId);
       } else {
         await playerService.followClub(clubId);
       }
       
-      // Mettre à jour l'état local
-      setClubs(clubs.map(club => 
-        club.id === clubId 
-          ? { ...club, is_followed: !isFollowed }
-          : club
-      ));
+      // On recharge les données pour mettre à jour l'état
+      await loadClubs();
       
-    } catch (error) {
-      setError(error.response?.data?.error || 'Erreur lors de l\'action');
-      console.error('Error toggling follow:', error);
-    } finally {
-      setActionLoading(prev => ({ ...prev, [clubId]: false }));
+      if (onFollowChange) {
+        onFollowChange();
+      }
+
+    } catch (err) {
+      console.error('Error toggling follow:', err);
+      setFollowError('Une erreur est survenue.');
+      // On recharge même en cas d'erreur pour resynchroniser l'interface
+      await loadClubs();
     }
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return new Date(dateString).toLocaleDateString('fr-FR');
+  };
+
+  // Le composant ClubCard reste presque identique
+  const ClubCard = ({ club }) => {
+    // On vérifie si le club est suivi en regardant dans notre Set d'IDs
+    const isFollowing = followedIds.has(club.id);
+
+    return (
+      <Card className="flex flex-col justify-between">
+        <CardHeader>
+          <CardTitle className="flex justify-between items-start">
+            <span>{club.name}</span>
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+              isFollowing 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-gray-100 text-gray-700'
+            }`}>
+              {isFollowing ? 'Suivi' : 'Non suivi'}
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex-grow space-y-2 text-sm text-gray-600">
+          {club.address && <div className="flex items-center"><MapPin className="h-4 w-4 mr-2" /> {club.address}</div>}
+          {club.phone_number && <div className="flex items-center"><Phone className="h-4 w-4 mr-2" /> {club.phone_number}</div>}
+          {club.email && <div className="flex items-center"><Mail className="h-4 w-4 mr-2" /> {club.email}</div>}
+          <div className="flex items-center"><Calendar className="h-4 w-4 mr-2" /> Créé le {formatDate(club.created_at)}</div>
+        </CardContent>
+        <div className="p-4 pt-0">
+          {isFollowing ? (
+            <Button 
+              className="w-full" 
+              variant="outline"
+              onClick={() => handleFollowToggle(club.id, true)}
+            >
+              <Heart className="h-4 w-4 mr-2" />
+              Ne plus suivre
+            </Button>
+          ) : (
+            <Button 
+              className="w-full" 
+              variant="default"
+              onClick={() => handleFollowToggle(club.id, false)}
+            >
+              <Heart className="h-4 w-4 mr-2 fill-current" />
+              Suivre
+            </Button>
+          )}
+        </div>
+      </Card>
+    );
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
 
+  if (error) {
+    return <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>;
+  }
+
+  // MODIFIÉ : Affichage simplifié sans les onglets
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900">Clubs Disponibles</h2>
-        <p className="text-gray-600 mt-2">
-          Suivez vos clubs préférés pour rester connecté avec leur communauté
-        </p>
-      </div>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {clubs.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Users className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Aucun club disponible
-            </h3>
-            <p className="text-gray-600 text-center">
-              Il n'y a actuellement aucun club disponible à suivre
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {clubs.map((club) => (
-            <Card key={club.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{club.name}</CardTitle>
-                    <CardDescription className="mt-1">
-                      {club.is_followed ? (
-                        <Badge variant="default" className="bg-green-100 text-green-800">
-                          <Heart className="h-3 w-3 mr-1" />
-                          Suivi
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">
-                          Non suivi
-                        </Badge>
-                      )}
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-4">
-                {/* Informations du club */}
-                <div className="space-y-2 text-sm text-gray-600">
-                  {club.address && (
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      <span>{club.address}</span>
-                    </div>
-                  )}
-                  {club.phone_number && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4" />
-                      <span>{club.phone_number}</span>
-                    </div>
-                  )}
-                  {club.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4" />
-                      <span>{club.email}</span>
-                    </div>
-                  )}
-                  {club.created_at && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      <span>Créé le {formatDate(club.created_at)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Bouton d'action */}
-                <Button
-                  onClick={() => handleFollowToggle(club.id, club.is_followed)}
-                  disabled={actionLoading[club.id]}
-                  variant={club.is_followed ? "outline" : "default"}
-                  className="w-full"
-                >
-                  {actionLoading[club.id] ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : club.is_followed ? (
-                    <HeartOff className="h-4 w-4 mr-2" />
-                  ) : (
-                    <Heart className="h-4 w-4 mr-2" />
-                  )}
-                  {club.is_followed ? 'Ne plus suivre' : 'Suivre'}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+    <div>
+      {followError && <Alert variant="destructive" className="mb-4"><AlertDescription>{followError}</AlertDescription></Alert>}
+      
+      <h3 className="text-lg font-semibold mb-4">Tous les Clubs</h3>
+      
+      {allClubs.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {allClubs.map(club => <ClubCard key={club.id} club={club} />)}
         </div>
+      ) : (
+        <p className="text-center text-gray-500 py-8">Aucun club n'est disponible sur la plateforme.</p>
       )}
     </div>
   );
 };
 
 export default ClubFollowing;
-

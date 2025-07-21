@@ -35,8 +35,13 @@ import {
   Calendar,
   Clock,
   User,
-  Loader2
+  Loader2,
+  Heart
 } from 'lucide-react';
+
+// --- IMPORT DES NOUVEAUX COMPOSANTS ---
+import FollowersManagement from './FollowersManagement';
+import ClubHistory from './ClubHistory';
 
 const ClubDashboard = () => {
   const [dashboardData, setDashboardData] = useState({
@@ -200,6 +205,8 @@ const ClubDashboard = () => {
             <TabsTrigger value="players">Joueurs</TabsTrigger>
             <TabsTrigger value="courts">Terrains</TabsTrigger>
             <TabsTrigger value="videos">Vidéos</TabsTrigger>
+            <TabsTrigger value="followers">Followers</TabsTrigger>
+            <TabsTrigger value="history">Historique</TabsTrigger>
           </TabsList>
           
           <TabsContent value="players" className="mt-6">
@@ -439,6 +446,14 @@ const ClubDashboard = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="followers" className="mt-6">
+            <FollowersManagement />
+          </TabsContent>
+
+          <TabsContent value="history" className="mt-6">
+            <ClubHistory />
           </TabsContent>
         </Tabs>
       </div>

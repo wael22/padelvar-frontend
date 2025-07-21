@@ -4,6 +4,7 @@ import Navbar from '../common/Navbar';
 import UserManagement from './UserManagement';
 import ClubManagement from './ClubManagement';
 import VideoManagement from './VideoManagement';
+import ClubHistoryAdmin from './ClubHistoryAdmin'; // MODIFIÉ: Import du nouveau composant
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -12,7 +13,8 @@ import {
   Building, 
   Video, 
   TrendingUp,
-  Loader2
+  Loader2,
+  History // MODIFIÉ: Import de l'icône
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -142,10 +144,11 @@ const AdminDashboard = () => {
 
         {/* Onglets de gestion */}
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4"> {/* MODIFIÉ: 4 colonnes */}
             <TabsTrigger value="users">Utilisateurs</TabsTrigger>
             <TabsTrigger value="clubs">Clubs</TabsTrigger>
             <TabsTrigger value="videos">Vidéos</TabsTrigger>
+            <TabsTrigger value="history"><span className="inline-flex items-center gap-1"><History className="h-4 w-4" />Historique</span></TabsTrigger> {/* MODIFIÉ: Ajout onglet */}
           </TabsList>
           
           <TabsContent value="users" className="mt-6">
@@ -158,6 +161,9 @@ const AdminDashboard = () => {
           
           <TabsContent value="videos" className="mt-6">
             <VideoManagement />
+          </TabsContent>
+          <TabsContent value="history" className="mt-6"> {/* MODIFIÉ: Ajout contenu onglet */}
+            <ClubHistoryAdmin />
           </TabsContent>
         </Tabs>
       </div>
