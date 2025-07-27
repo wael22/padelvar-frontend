@@ -6,6 +6,8 @@ import RegisterForm from './components/auth/RegisterForm';
 import PlayerDashboard from './components/player/PlayerDashboard';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ClubDashboard from './components/club/ClubDashboard';
+import ProfilePage from './pages/ProfilePage';
+import SettingsPage from './pages/SettingsPage';
 import './App.css';
 
 function App() {
@@ -46,9 +48,12 @@ function App() {
               } 
             />
             
+            {/* Pages profil et paramètres protégées */}
+            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+
             {/* Redirection par défaut */}
             <Route path="/" element={<Navigate to="/login" replace />} />
-            
             {/* Route 404 */}
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>

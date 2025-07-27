@@ -1,3 +1,5 @@
+// padelvar-frontend/src/lib/api.js
+
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:5000/api';
@@ -34,6 +36,8 @@ export const authService = {
   logout: () => api.post('/auth/logout'),
   getCurrentUser: () => api.get('/auth/me'),
   updateProfile: (profileData) => api.put('/auth/update-profile', profileData),
+  // NOUVELLE FONCTION
+  changePassword: (passwordData) => api.post('/auth/change-password', passwordData),
 };
 
 export const videoService = {
@@ -46,10 +50,6 @@ export const videoService = {
   buyCredits: (credits, paymentMethod) => api.post('/videos/buy-credits', { credits, payment_method: paymentMethod }),
   scanQrCode: (qrCode) => api.post('/videos/qr-scan', { qr_code: qrCode }),
   getCameraStream: (courtId) => api.get(`/videos/courts/${courtId}/camera-stream`),
-  
-  // ====================================================================
-  // NOUVELLE LIGNE AJOUTÉE ICI
-  // ====================================================================
   getCourtsForClub: (clubId) => api.get(`/videos/clubs/${clubId}/courts`),
 };
 
@@ -68,29 +68,13 @@ export const adminService = {
   deleteCourt: (courtId) => api.delete(`/admin/courts/${courtId}`),
   getAllVideos: () => api.get('/admin/videos'),
   addCredits: (userId, credits) => api.post(`/admin/users/${userId}/credits`, { credits }),
-  getAllClubsHistory: async () => {
-    try {
-      const response = await fetch('/api/admin/clubs/history/all', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Important pour les sessions
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('API Response for history:', data); // Debug
-      return { data };
-      
-    } catch (error) {
-      console.error('Error fetching clubs history:', error);
-      throw error;
-    }
-  },
+  
+  // ====================================================================
+  // CORRECTION APPLIQUÉE ICI
+  // On utilise maintenant "api.get" comme pour toutes les autres fonctions.
+  // Axios construira l'URL complète vers http://localhost:5000/api/admin/clubs/history/all
+  // ====================================================================
+  getAllClubsHistory: () => api.get('/admin/clubs/history/all'),
 };
 
 export const playerService = {
@@ -112,6 +96,8 @@ export const clubService = {
   addCreditsToPlayer: (playerId, credits) => api.post(`/clubs/${playerId}/add-credits`, { credits }),
   updateFollower: (playerId, playerData) => clubService.updatePlayer(playerId, playerData),
   addCreditsToFollower: (playerId, credits) => clubService.addCreditsToPlayer(playerId, credits),
+  // NOUVELLE FONCTION
+  updateClubProfile: (clubData) => api.put('/clubs/profile', clubData),
 };
 
 export default api;
