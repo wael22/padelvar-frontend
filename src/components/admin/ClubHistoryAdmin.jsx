@@ -29,8 +29,8 @@ const ClubHistoryAdmin = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({
-    clubId: 'all', // Initialisé à 'all'
-    actionType: 'all', // Initialisé à 'all'
+    clubId: 'all',
+    actionType: 'all',
     search: ''
   });
 
@@ -50,6 +50,9 @@ const ClubHistoryAdmin = () => {
         adminService.getAllClubs()
       ]);
       
+      console.log('History data:', historyResponse.data); // Debug
+      console.log('Clubs data:', clubsResponse.data); // Debug
+      
       setAllHistory(historyResponse.data.history || []);
       setClubs(clubsResponse.data.clubs || []);
     } catch (error) {
@@ -62,29 +65,50 @@ const ClubHistoryAdmin = () => {
 
   const applyFilters = () => {
     let filtered = [...allHistory];
+    
+    console.log('Applying filters:', filters); // Debug
+    console.log('Total history entries:', filtered.length); // Debug
 
-    // Filtre par club (comparaison de nombres)
+    // Filtre par club - CORRECTION: utiliser club_id au lieu de club_id
     if (filters.clubId && filters.clubId !== 'all') {
-      // On s'assure que les deux côtés sont des nombres
       const clubIdToFilter = parseInt(filters.clubId, 10);
-      filtered = filtered.filter(entry => entry.club_id === clubIdToFilter);
+      console.log('Filtering by club ID:', clubIdToFilter); // Debug
+      
+      filtered = filtered.filter(entry => {
+        console.log('Entry club_id:', entry.club_id, 'Type:', typeof entry.club_id); // Debug
+        return entry.club_id === clubIdToFilter;
+      });
+      
+      console.log('After club filter:', filtered.length); // Debug
     }
 
-    // Filtre par type d'action (comparaison de chaînes)
+    // Filtre par type d'action
     if (filters.actionType && filters.actionType !== 'all') {
-      filtered = filtered.filter(entry => entry.action_type === filters.actionType);
+      console.log('Filtering by action type:', filters.actionType); // Debug
+      
+      filtered = filtered.filter(entry => {
+        console.log('Entry action_type:', entry.action_type); // Debug
+        return entry.action_type === filters.actionType;
+      });
+      
+      console.log('After action filter:', filtered.length); // Debug
     }
 
     // Filtre par recherche textuelle
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
+      console.log('Filtering by search:', searchLower); // Debug
+      
       filtered = filtered.filter(entry => 
-        entry.player_name?.toLowerCase().includes(searchLower) ||
-        entry.club_name?.toLowerCase().includes(searchLower) ||
-        entry.performed_by_name?.toLowerCase().includes(searchLower)
+        (entry.player_name && entry.player_name.toLowerCase().includes(searchLower)) ||
+        (entry.club_name && entry.club_name.toLowerCase().includes(searchLower)) ||
+        (entry.performed_by_name && entry.performed_by_name.toLowerCase().includes(searchLower))
       );
+      
+      console.log('After search filter:', filtered.length); // Debug
     }
 
+    console.log('Final filtered results:', filtered.length); // Debug
     setFilteredHistory(filtered);
   };
 
@@ -114,16 +138,28 @@ const ClubHistoryAdmin = () => {
 
   const getActionVariant = (actionType) => {
     switch (actionType) {
-      case 'follow_club': case 'create_player': return 'default';
-      case 'unfollow_club': case 'delete_player': return 'destructive';
-      case 'update_player': return 'secondary';
-      default: return 'outline';
+      case 'follow_club': 
+      case 'create_player': 
+        return 'default';
+      case 'unfollow_club': 
+      case 'delete_player': 
+        return 'destructive';
+      case 'update_player': 
+        return 'secondary';
+      case 'add_credits':
+        return 'outline';
+      default: 
+        return 'outline';
     }
   };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('fr-FR', {
-      year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit'
     });
   };
 
@@ -132,10 +168,14 @@ const ClubHistoryAdmin = () => {
     try {
       const details = JSON.parse(actionDetails);
       if (details.changes) {
-        return `Modifications: ${Object.entries(details.changes).map(([field, change]) => `${field}: "${change.old}" → "${change.new}"`).join(', ')}`;
+        return `Modifications: ${Object.entries(details.changes).map(([field, change]) => 
+          `${field}: "${change.old}" → "${change.new}"`).join(', ')}`;
       }
       if (details.credits_added) {
         return `${details.credits_added} crédits ajoutés (${details.old_balance} → ${details.new_balance})`;
+      }
+      if (details.club_name) {
+        return `Club: ${details.club_name}`;
       }
       return JSON.stringify(details);
     } catch (e) {
@@ -148,7 +188,11 @@ const ClubHistoryAdmin = () => {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
@@ -160,29 +204,57 @@ const ClubHistoryAdmin = () => {
         </p>
       </div>
 
-      {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5" />Filtres</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filtres
+          </CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="text-sm font-medium mb-2 block">Club</label>
-              <Select value={filters.clubId} onValueChange={(value) => setFilters({...filters, clubId: value})}>
-                <SelectTrigger><SelectValue placeholder="Tous les clubs" /></SelectTrigger>
+              <Select 
+                value={filters.clubId} 
+                onValueChange={(value) => {
+                  console.log('Club filter changed to:', value); // Debug
+                  setFilters({...filters, clubId: value});
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Tous les clubs" />
+                </SelectTrigger>
                 <SelectContent>
-                  {/* CORRIGÉ : La valeur est "all" au lieu de "" */}
                   <SelectItem value="all">Tous les clubs</SelectItem>
-                  {clubs.map((club) => <SelectItem key={club.id} value={club.id.toString()}>{club.name}</SelectItem>)}
+                  {clubs.map((club) => (
+                    <SelectItem key={club.id} value={club.id.toString()}>
+                      {club.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
+            
             <div>
               <label className="text-sm font-medium mb-2 block">Type d'action</label>
-              <Select value={filters.actionType} onValueChange={(value) => setFilters({...filters, actionType: value})}>
-                <SelectTrigger><SelectValue placeholder="Toutes les actions" /></SelectTrigger>
+              <Select 
+                value={filters.actionType} 
+                onValueChange={(value) => {
+                  console.log('Action type filter changed to:', value); // Debug
+                  setFilters({...filters, actionType: value});
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Toutes les actions" />
+                </SelectTrigger>
                 <SelectContent>
-                  {/* CORRIGÉ : La valeur est "all" au lieu de "" */}
                   <SelectItem value="all">Toutes les actions</SelectItem>
                   <SelectItem value="follow_club">Suivi du club</SelectItem>
                   <SelectItem value="unfollow_club">Arrêt du suivi</SelectItem>
@@ -193,45 +265,83 @@ const ClubHistoryAdmin = () => {
                 </SelectContent>
               </Select>
             </div>
+            
             <div>
               <label className="text-sm font-medium mb-2 block">Recherche</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input placeholder="Nom du joueur, club..." value={filters.search} onChange={(e) => setFilters({...filters, search: e.target.value})} className="pl-10" />
+                <Input 
+                  placeholder="Nom du joueur, club..." 
+                  value={filters.search} 
+                  onChange={(e) => setFilters({...filters, search: e.target.value})} 
+                  className="pl-10" 
+                />
               </div>
             </div>
+            
             <div className="flex items-end">
-              <Button variant="outline" onClick={clearFilters} className="w-full">Effacer</Button>
+              <Button variant="outline" onClick={clearFilters} className="w-full">
+                Effacer
+              </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {filteredHistory.length === 0 ? (
-        <Card><CardContent className="text-center py-12"><History className="h-12 w-12 text-gray-400 mx-auto mb-4" /><h3>Aucun historique trouvé</h3><p className="text-gray-600">Aucune action ne correspond à vos filtres.</p></CardContent></Card>
+        <Card>
+          <CardContent className="text-center py-12">
+            <History className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">Aucun historique trouvé</h3>
+            <p className="text-gray-600">Aucune action ne correspond à vos filtres.</p>
+            {allHistory.length > 0 && (
+              <Button variant="outline" onClick={clearFilters} className="mt-4">
+                Voir tout l'historique
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-4">
           {filteredHistory.map((entry) => (
             <Card key={entry.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
-                  <div className="flex-shrink-0 mt-1">{getActionIcon(entry.action_type)}</div>
+                  <div className="flex-shrink-0 mt-1">
+                    {getActionIcon(entry.action_type)}
+                  </div>
+                  
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <Badge variant={getActionVariant(entry.action_type)}>{getActionLabel(entry.action_type)}</Badge>
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700"><Building className="h-3 w-3 mr-1" />{entry.club_name}</Badge>
+                      <Badge variant={getActionVariant(entry.action_type)}>
+                        {getActionLabel(entry.action_type)}
+                      </Badge>
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                        <Building className="h-3 w-3 mr-1" />
+                        {entry.club_name}
+                      </Badge>
                     </div>
+                    
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm flex-wrap">
                         <User className="h-4 w-4 text-gray-400" />
                         <span className="font-medium">{entry.player_name}</span>
                         <span className="text-gray-500">par {entry.performed_by_name}</span>
                       </div>
-                      {entry.action_details && <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">{formatActionDetails(entry.action_details)}</div>}
+                      
+                      {entry.action_details && (
+                        <div className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                          {formatActionDetails(entry.action_details)}
+                        </div>
+                      )}
                     </div>
                   </div>
+                  
                   <div className="flex-shrink-0 text-right text-xs text-gray-500">
-                    <div className="flex items-center gap-1"><Calendar className="h-3 w-3" /><span>{formatDate(entry.performed_at)}</span></div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      <span>{formatDate(entry.performed_at)}</span>
+                    </div>
                   </div>
                 </div>
               </CardContent>

@@ -36,7 +36,7 @@ const FollowersManagement = () => {
     try {
       setLoading(true);
       const response = await clubService.getFollowers();
-      setFollowers(response.data.followers);
+      setFollowers(response.data.followers ?? []);
     } catch (error) {
       setError('Erreur lors du chargement des followers');
       console.error('Error loading followers:', error);
@@ -129,7 +129,7 @@ const FollowersManagement = () => {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Gestion des Followers</h2>
           <p className="text-gray-600 mt-2">
-            Gérez les joueurs qui suivent votre club ({followers.length} followers)
+            Gérez les joueurs qui suivent votre club ({(followers ?? []).length} followers)
           </p>
         </div>
       </div>

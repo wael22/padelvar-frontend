@@ -73,8 +73,16 @@ const ClubDashboard = () => {
       const dashboardResponse = await clubService.getDashboard();
       
       setDashboardData({
-        ...dashboardResponse.data,
-        courts: dashboardResponse.data.courts || []
+        club: dashboardResponse.data.club ?? null,
+        players: dashboardResponse.data.players ?? [],
+        videos: dashboardResponse.data.videos ?? [],
+        courts: dashboardResponse.data.courts ?? [],
+        stats: dashboardResponse.data.stats ?? {
+          total_videos: 0,
+          total_players: 0,
+          total_credits_distributed: 0,
+          total_courts: 0
+        }
       });
     } catch (error) {
       setError('Erreur lors du chargement du tableau de bord');
@@ -205,7 +213,6 @@ const ClubDashboard = () => {
             <TabsTrigger value="players">Joueurs</TabsTrigger>
             <TabsTrigger value="courts">Terrains</TabsTrigger>
             <TabsTrigger value="videos">Vidéos</TabsTrigger>
-            <TabsTrigger value="followers">Followers</TabsTrigger>
             <TabsTrigger value="history">Historique</TabsTrigger>
           </TabsList>
           
@@ -214,11 +221,11 @@ const ClubDashboard = () => {
               <CardHeader>
                 <CardTitle>Joueurs du Club</CardTitle>
                 <CardDescription>
-                  Gérez les crédits de vos joueurs
+                  Gérez les informations et crédits de vos joueurs
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {dashboardData.players.length === 0 ? (
+                {(dashboardData.players ?? []).length === 0 ? (
                   <div className="text-center py-8">
                     <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -240,7 +247,7 @@ const ClubDashboard = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {dashboardData.players.map((player) => (
+                      {(dashboardData.players ?? []).map((player) => (
                         <TableRow key={player.id}>
                           <TableCell className="font-medium">{player.name}</TableCell>
                           <TableCell>{player.email}</TableCell>
@@ -268,6 +275,8 @@ const ClubDashboard = () => {
                 )}
               </CardContent>
             </Card>
+            {/* Modal d'édition joueur */}
+            {/* ...à implémenter selon besoin... */}
           </TabsContent>
           
           <TabsContent value="courts" className="mt-6">
@@ -279,7 +288,7 @@ const ClubDashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {dashboardData.courts.length === 0 ? (
+                {(dashboardData.courts ?? []).length === 0 ? (
                   <div className="text-center py-8">
                     <div className="h-12 w-12 bg-gray-200 rounded-lg mx-auto mb-4 flex items-center justify-center">
                       <span className="text-2xl">🎾</span>
@@ -293,7 +302,7 @@ const ClubDashboard = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {dashboardData.courts.map((court) => (
+                    {(dashboardData.courts ?? []).map((court) => (
                       <Card key={court.id} className="overflow-hidden">
                         <CardHeader className="pb-3">
                           <CardTitle className="text-lg">{court.name}</CardTitle>
@@ -372,7 +381,7 @@ const ClubDashboard = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {dashboardData.videos.length === 0 ? (
+                {(dashboardData.videos ?? []).length === 0 ? (
                   <div className="text-center py-8">
                     <Video className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -394,7 +403,7 @@ const ClubDashboard = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {dashboardData.videos.map((video) => (
+                      {(dashboardData.videos ?? []).map((video) => (
                         <TableRow key={video.id}>
                           <TableCell>
                             <div>
@@ -448,9 +457,6 @@ const ClubDashboard = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="followers" className="mt-6">
-            <FollowersManagement />
-          </TabsContent>
 
           <TabsContent value="history" className="mt-6">
             <ClubHistory />

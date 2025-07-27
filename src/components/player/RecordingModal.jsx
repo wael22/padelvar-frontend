@@ -142,15 +142,22 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
     setIsLoading(true);
     setError('');
     try {
-      await videoService.stopRecording({
+      // ====================================================================
+      // CORRECTION : On s'assure que court_id est bien envoyé
+      // ====================================================================
+      const response = await videoService.stopRecording({
         recording_id: recordingData.recording_id,
         title: recordingData.title || `Match du ${new Date().toLocaleDateString('fr-FR')}`,
         description: recordingData.description,
+        court_id: recordingData.court_id // C'est la ligne la plus importante
       });
+
       onVideoCreated();
       handleClose();
     } catch (error) {
-      setError(error.response?.data?.error || 'Erreur lors de l\'arrêt');
+      // Affiche l'erreur renvoyée par le backend
+      setError(error.response?.data?.error || 'Erreur lors de l\'arrêt de l\'enregistrement');
+      console.error('Error stopping recording:', error);
     } finally {
       setIsLoading(false);
     }

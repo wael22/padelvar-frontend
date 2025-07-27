@@ -68,7 +68,29 @@ export const adminService = {
   deleteCourt: (courtId) => api.delete(`/admin/courts/${courtId}`),
   getAllVideos: () => api.get('/admin/videos'),
   addCredits: (userId, credits) => api.post(`/admin/users/${userId}/credits`, { credits }),
-  getAllClubsHistory: () => api.get('/admin/clubs/history/all'),
+  getAllClubsHistory: async () => {
+    try {
+      const response = await fetch('/api/admin/clubs/history/all', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Important pour les sessions
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('API Response for history:', data); // Debug
+      return { data };
+      
+    } catch (error) {
+      console.error('Error fetching clubs history:', error);
+      throw error;
+    }
+  },
 };
 
 export const playerService = {
