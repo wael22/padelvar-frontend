@@ -4,7 +4,7 @@ import Navbar from '../common/Navbar';
 import UserManagement from './UserManagement';
 import ClubManagement from './ClubManagement';
 import VideoManagement from './VideoManagement';
-import ClubHistoryAdmin from './ClubHistoryAdmin'; // MODIFIÉ: Import du nouveau composant
+import ClubHistoryAdmin from './ClubHistoryAdmin';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -14,12 +14,13 @@ import {
   Video, 
   TrendingUp,
   Loader2,
-  History // MODIFIÉ: Import de l'icône
+  History
 } from 'lucide-react';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
-    totalUsers: 0,
+    // CORRIGÉ : Ajout d'une nouvelle statistique pour les utilisateurs réels
+    totalRealUsers: 0, 
     totalClubs: 0,
     totalVideos: 0,
     totalCredits: 0
@@ -35,21 +36,24 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
       
-      // Charger les statistiques en parallèle
       const [usersResponse, clubsResponse, videosResponse] = await Promise.all([
         adminService.getAllUsers(),
         adminService.getAllClubs(),
         adminService.getAllVideos()
       ]);
 
-      const users = usersResponse.data.users;
-      const clubs = clubsResponse.data.clubs;
-      const videos = videosResponse.data.videos;
+      const allUsers = usersResponse.data.users || [];
+      const clubs = clubsResponse.data.clubs || [];
+      const videos = videosResponse.data.videos || [];
       
-      const totalCredits = users.reduce((sum, user) => sum + (user.credits_balance || 0), 0);
+      // CORRIGÉ : On calcule le nombre d'utilisateurs qui ne sont PAS des clubs.
+      const realUsers = allUsers.filter(user => user.role !== 'club');
+      
+      // Le calcul des crédits ne change pas, car les clubs n'en ont pas.
+      const totalCredits = allUsers.reduce((sum, user) => sum + (user.credits_balance || 0), 0);
 
       setStats({
-        totalUsers: users.length,
+        totalRealUsers: realUsers.length, // On utilise le nouveau compte
         totalClubs: clubs.length,
         totalVideos: videos.length,
         totalCredits
@@ -67,7 +71,6 @@ const AdminDashboard = () => {
       <Navbar title="Administration" />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* En-tête */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
             Tableau de bord administrateur
@@ -77,7 +80,6 @@ const AdminDashboard = () => {
           </p>
         </div>
 
-        {/* Statistiques */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -88,15 +90,16 @@ const AdminDashboard = () => {
           </Alert>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            {/* CORRIGÉ : La carte des utilisateurs affiche maintenant les bonnes données */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Utilisateurs</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.totalUsers}</div>
+                <div className="text-2xl font-bold">{stats.totalRealUsers}</div>
                 <p className="text-xs text-muted-foreground">
-                  Joueurs, clubs et admins
+                  Joueurs et admins
                 </p>
               </CardContent>
             </Card>
@@ -142,13 +145,12 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Onglets de gestion */}
         <Tabs defaultValue="users" className="w-full">
-          <TabsList className="grid w-full grid-cols-4"> {/* MODIFIÉ: 4 colonnes */}
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="users">Utilisateurs</TabsTrigger>
             <TabsTrigger value="clubs">Clubs</TabsTrigger>
             <TabsTrigger value="videos">Vidéos</TabsTrigger>
-            <TabsTrigger value="history"><span className="inline-flex items-center gap-1"><History className="h-4 w-4" />Historique</span></TabsTrigger> {/* MODIFIÉ: Ajout onglet */}
+            <TabsTrigger value="history"><span className="inline-flex items-center gap-1"><History className="h-4 w-4" />Historique</span></TabsTrigger>
           </TabsList>
           
           <TabsContent value="users" className="mt-6">
@@ -162,7 +164,7 @@ const AdminDashboard = () => {
           <TabsContent value="videos" className="mt-6">
             <VideoManagement />
           </TabsContent>
-          <TabsContent value="history" className="mt-6"> {/* MODIFIÉ: Ajout contenu onglet */}
+          <TabsContent value="history" className="mt-6">
             <ClubHistoryAdmin />
           </TabsContent>
         </Tabs>
@@ -172,4 +174,3 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
-

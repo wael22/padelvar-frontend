@@ -43,10 +43,11 @@ import {
   Coins,
   Loader2,
   Search,
-  RefreshCw
+  RefreshCw,
+  User as UserIcon // Renommé pour éviter conflit
 } from 'lucide-react';
 
-const UserManagement = ({ onStatsUpdate, refreshTrigger }) => {
+const UserManagement = ({ onStatsUpdate }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -70,18 +71,13 @@ const UserManagement = ({ onStatsUpdate, refreshTrigger }) => {
     loadUsers();
   }, []);
 
-  // Recharger les utilisateurs quand refreshTrigger change
-  useEffect(() => {
-    if (refreshTrigger) {
-      loadUsers();
-    }
-  }, [refreshTrigger]);
-
   const loadUsers = async () => {
     try {
       setLoading(true);
       const response = await adminService.getAllUsers();
-      setUsers(response.data.users);
+      // CORRIGÉ : On filtre pour ne pas afficher les utilisateurs de type 'club'
+      const filtered = response.data.users.filter(user => user.role !== 'club');
+      setUsers(filtered);
     } catch (error) {
       setError('Erreur lors du chargement des utilisateurs');
       console.error('Error loading users:', error);
@@ -198,13 +194,11 @@ const UserManagement = ({ onStatsUpdate, refreshTrigger }) => {
   const getRoleBadge = (role) => {
     const variants = {
       'super_admin': 'destructive',
-      'club': 'default',
       'player': 'secondary'
     };
     
     const labels = {
       'super_admin': 'Super Admin',
-      'club': 'Club',
       'player': 'Joueur'
     };
 
@@ -229,7 +223,7 @@ const UserManagement = ({ onStatsUpdate, refreshTrigger }) => {
             <div>
               <CardTitle>Gestion des Utilisateurs</CardTitle>
               <CardDescription>
-                Créez, modifiez et gérez les comptes utilisateurs
+                Gérez les comptes administrateurs et joueurs.
               </CardDescription>
             </div>
             
@@ -249,88 +243,45 @@ const UserManagement = ({ onStatsUpdate, refreshTrigger }) => {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Créer un Utilisateur</DialogTitle>
-                    <DialogDescription>
-                      Ajoutez un nouvel utilisateur à la plateforme
-                    </DialogDescription>
                   </DialogHeader>
                   
                   <form onSubmit={handleCreateUser} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Nom complet</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        required
-                      />
+                      <Input id="name" value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} required />
                     </div>
                     
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                        required
-                      />
+                      <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))} required />
                     </div>
                     
                     <div className="space-y-2">
                       <Label htmlFor="role">Rôle</Label>
-                      <Select 
-                        value={formData.role} 
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
+                      <Select value={formData.role} onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
+                          {/* CORRIGÉ : On ne peut plus créer de 'club' ici */}
                           <SelectItem value="player">Joueur</SelectItem>
-                          <SelectItem value="club">Club</SelectItem>
                           <SelectItem value="super_admin">Super Admin</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Téléphone</Label>
-                      <Input
-                        id="phone"
-                        value={formData.phone_number}
-                        onChange={(e) => setFormData(prev => ({ ...prev, phone_number: e.target.value }))}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
                       <Label htmlFor="credits">Crédits initiaux</Label>
-                      <Input
-                        id="credits"
-                        type="number"
-                        min="0"
-                        value={formData.credits_balance}
-                        onChange={(e) => setFormData(prev => ({ ...prev, credits_balance: parseInt(e.target.value) || 0 }))}
-                      />
+                      <Input id="credits" type="number" min="0" value={formData.credits_balance} onChange={(e) => setFormData(prev => ({ ...prev, credits_balance: parseInt(e.target.value) || 0 }))} />
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="password">Mot de passe (optionnel)</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={formData.password}
-                        onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                      />
+                      <Label htmlFor="password">Mot de passe</Label>
+                      <Input id="password" type="password" value={formData.password} onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))} required />
                     </div>
                     
                     <div className="flex justify-end space-x-2">
-                      <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
-                        Annuler
-                      </Button>
+                      <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>Annuler</Button>
                       <Button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : null}
+                        {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                         Créer
                       </Button>
                     </div>
@@ -342,22 +293,13 @@ const UserManagement = ({ onStatsUpdate, refreshTrigger }) => {
         </CardHeader>
         
         <CardContent>
-          {/* Barre de recherche */}
           <div className="flex items-center space-x-2 mb-4">
             <Search className="h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Rechercher par nom ou email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="max-w-sm"
-            />
+            <Input placeholder="Rechercher par nom ou email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm" />
           </div>
 
-          {/* Tableau des utilisateurs */}
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
+            <div className="flex items-center justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
           ) : (
             <Table>
               <TableHeader>
@@ -365,7 +307,6 @@ const UserManagement = ({ onStatsUpdate, refreshTrigger }) => {
                   <TableHead>Nom</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Rôle</TableHead>
-                  <TableHead>Téléphone</TableHead>
                   <TableHead>Crédits</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -376,7 +317,6 @@ const UserManagement = ({ onStatsUpdate, refreshTrigger }) => {
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>{getRoleBadge(user.role)}</TableCell>
-                    <TableCell>{user.phone_number || '-'}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-1">
                         <Coins className="h-4 w-4 text-yellow-500" />
@@ -385,27 +325,11 @@ const UserManagement = ({ onStatsUpdate, refreshTrigger }) => {
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openEditModal(user)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Modifier
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openCreditsModal(user)}>
-                            <Coins className="mr-2 h-4 w-4" />
-                            Ajouter crédits
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => handleDeleteUser(user.id)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Supprimer
-                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEditModal(user)}><Edit className="mr-2 h-4 w-4" />Modifier</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openCreditsModal(user)}><Coins className="mr-2 h-4 w-4" />Ajouter crédits</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDeleteUser(user.id)} className="text-red-600"><Trash2 className="mr-2 h-4 w-4" />Supprimer</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -420,69 +344,30 @@ const UserManagement = ({ onStatsUpdate, refreshTrigger }) => {
       {/* Modal d'édition */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Modifier l'Utilisateur</DialogTitle>
-            <DialogDescription>
-              Modifiez les informations de l'utilisateur
-            </DialogDescription>
-          </DialogHeader>
-          
+          <DialogHeader><DialogTitle>Modifier l'Utilisateur</DialogTitle></DialogHeader>
           <form onSubmit={handleUpdateUser} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="edit-name">Nom complet</Label>
-              <Input
-                id="edit-name"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                required
-              />
+              <Input id="edit-name" value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} required />
             </div>
-            
             <div className="space-y-2">
               <Label htmlFor="edit-role">Rôle</Label>
-              <Select 
-                value={formData.role} 
-                onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={formData.role} onValueChange={(value) => setFormData(prev => ({ ...prev, role: value }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="player">Joueur</SelectItem>
-                  <SelectItem value="club">Club</SelectItem>
                   <SelectItem value="super_admin">Super Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="edit-phone">Téléphone</Label>
-              <Input
-                id="edit-phone"
-                value={formData.phone_number}
-                onChange={(e) => setFormData(prev => ({ ...prev, phone_number: e.target.value }))}
-              />
-            </div>
-            
             <div className="space-y-2">
               <Label htmlFor="edit-credits">Crédits</Label>
-              <Input
-                id="edit-credits"
-                type="number"
-                min="0"
-                value={formData.credits_balance}
-                onChange={(e) => setFormData(prev => ({ ...prev, credits_balance: parseInt(e.target.value) || 0 }))}
-              />
+              <Input id="edit-credits" type="number" min="0" value={formData.credits_balance} onChange={(e) => setFormData(prev => ({ ...prev, credits_balance: parseInt(e.target.value) || 0 }))} />
             </div>
-            
             <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>
-                Annuler
-              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowEditModal(false)}>Annuler</Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : null}
+                {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Sauvegarder
               </Button>
             </div>
@@ -493,34 +378,16 @@ const UserManagement = ({ onStatsUpdate, refreshTrigger }) => {
       {/* Modal d'ajout de crédits */}
       <Dialog open={showCreditsModal} onOpenChange={setShowCreditsModal}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Ajouter des Crédits</DialogTitle>
-            <DialogDescription>
-              Ajoutez des crédits à {selectedUser?.name}
-            </DialogDescription>
-          </DialogHeader>
-          
+          <DialogHeader><DialogTitle>Ajouter des Crédits</DialogTitle></DialogHeader>
           <form onSubmit={handleAddCredits} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="credits-amount">Nombre de crédits à ajouter</Label>
-              <Input
-                id="credits-amount"
-                type="number"
-                min="1"
-                value={creditsToAdd}
-                onChange={(e) => setCreditsToAdd(parseInt(e.target.value) || 0)}
-                required
-              />
+              <Input id="credits-amount" type="number" min="1" value={creditsToAdd} onChange={(e) => setCreditsToAdd(parseInt(e.target.value) || 0)} required />
             </div>
-            
             <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => setShowCreditsModal(false)}>
-                Annuler
-              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowCreditsModal(false)}>Annuler</Button>
               <Button type="submit" disabled={isSubmitting || creditsToAdd <= 0}>
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : null}
+                {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Ajouter {creditsToAdd} crédit{creditsToAdd > 1 ? 's' : ''}
               </Button>
             </div>

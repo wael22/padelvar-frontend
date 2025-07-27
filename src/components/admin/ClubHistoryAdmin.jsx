@@ -23,15 +23,14 @@ import {
 } from 'lucide-react';
 
 const ClubHistoryAdmin = () => {
-  // Initialiser avec un tableau vide pour éviter les erreurs
   const [allHistory, setAllHistory] = useState([]);
   const [filteredHistory, setFilteredHistory] = useState([]);
   const [clubs, setClubs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState({
-    clubId: '',
-    actionType: '',
+    clubId: 'all', // Initialisé à 'all'
+    actionType: 'all', // Initialisé à 'all'
     search: ''
   });
 
@@ -40,7 +39,6 @@ const ClubHistoryAdmin = () => {
   }, []);
 
   useEffect(() => {
-    // On peut garder cette dépendance, car allHistory sera toujours un tableau
     applyFilters();
   }, [allHistory, filters]);
 
@@ -52,38 +50,32 @@ const ClubHistoryAdmin = () => {
         adminService.getAllClubs()
       ]);
       
-      // **CORRECTION PRINCIPALE ICI**
-      // On vérifie si la réponse contient bien un tableau `history`.
-      // Si ce n'est pas le cas, on utilise un tableau vide par défaut.
-      const historyData = historyResponse?.data?.history || [];
-      const clubsData = clubsResponse?.data?.clubs || [];
-
-      setAllHistory(historyData);
-      setClubs(clubsData);
-
+      setAllHistory(historyResponse.data.history || []);
+      setClubs(clubsResponse.data.clubs || []);
     } catch (error) {
       setError('Erreur lors du chargement des données');
       console.error('Error loading data:', error);
-      // En cas d'erreur, s'assurer que les états sont des tableaux vides
-      setAllHistory([]);
-      setClubs([]);
     } finally {
       setLoading(false);
     }
   };
 
   const applyFilters = () => {
-    // Cette ligne est maintenant sûre car allHistory est toujours un tableau
     let filtered = [...allHistory];
 
-    if (filters.clubId) {
-      filtered = filtered.filter(entry => entry.club_id === parseInt(filters.clubId));
+    // Filtre par club (comparaison de nombres)
+    if (filters.clubId && filters.clubId !== 'all') {
+      // On s'assure que les deux côtés sont des nombres
+      const clubIdToFilter = parseInt(filters.clubId, 10);
+      filtered = filtered.filter(entry => entry.club_id === clubIdToFilter);
     }
 
-    if (filters.actionType) {
+    // Filtre par type d'action (comparaison de chaînes)
+    if (filters.actionType && filters.actionType !== 'all') {
       filtered = filtered.filter(entry => entry.action_type === filters.actionType);
     }
 
+    // Filtre par recherche textuelle
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       filtered = filtered.filter(entry => 
@@ -95,8 +87,6 @@ const ClubHistoryAdmin = () => {
 
     setFilteredHistory(filtered);
   };
-
-  // ... Le reste du fichier reste identique ...
 
   const getActionIcon = (actionType) => {
     switch (actionType) {
@@ -154,7 +144,7 @@ const ClubHistoryAdmin = () => {
   };
 
   const clearFilters = () => {
-    setFilters({ clubId: '', actionType: '', search: '' });
+    setFilters({ clubId: 'all', actionType: 'all', search: '' });
   };
 
   if (loading) {
@@ -181,7 +171,8 @@ const ClubHistoryAdmin = () => {
               <Select value={filters.clubId} onValueChange={(value) => setFilters({...filters, clubId: value})}>
                 <SelectTrigger><SelectValue placeholder="Tous les clubs" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tous les clubs</SelectItem>
+                  {/* CORRIGÉ : La valeur est "all" au lieu de "" */}
+                  <SelectItem value="all">Tous les clubs</SelectItem>
                   {clubs.map((club) => <SelectItem key={club.id} value={club.id.toString()}>{club.name}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -191,10 +182,14 @@ const ClubHistoryAdmin = () => {
               <Select value={filters.actionType} onValueChange={(value) => setFilters({...filters, actionType: value})}>
                 <SelectTrigger><SelectValue placeholder="Toutes les actions" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Toutes les actions</SelectItem>
-                  {Object.entries({follow_club: 'Suivi', unfollow_club: 'Arrêt suivi', update_player: 'Modif. joueur', add_credits: 'Ajout crédits', create_player: 'Création joueur', delete_player: 'Supp. joueur'}).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
+                  {/* CORRIGÉ : La valeur est "all" au lieu de "" */}
+                  <SelectItem value="all">Toutes les actions</SelectItem>
+                  <SelectItem value="follow_club">Suivi du club</SelectItem>
+                  <SelectItem value="unfollow_club">Arrêt du suivi</SelectItem>
+                  <SelectItem value="update_player">Modification du joueur</SelectItem>
+                  <SelectItem value="add_credits">Ajout de crédits</SelectItem>
+                  <SelectItem value="create_player">Création du joueur</SelectItem>
+                  <SelectItem value="delete_player">Suppression du joueur</SelectItem>
                 </SelectContent>
               </Select>
             </div>
