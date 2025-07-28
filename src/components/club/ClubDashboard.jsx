@@ -35,7 +35,8 @@ import {
   Clock,
   User,
   Loader2,
-  Gift
+  Gift,
+  Square
 } from 'lucide-react';
 
 import ClubHistory from './ClubHistory';
@@ -103,6 +104,18 @@ const ClubDashboard = () => {
     return `${Math.floor(seconds / 60)}m`;
   };
 
+
+  // Gestion arrêt club
+  const handleClubStopRecording = async (videoId) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir forcer l'arrêt de l'enregistrement ?")) return;
+    try {
+      await clubService.stopRecording(videoId);
+      loadDashboard();
+    } catch (err) {
+      alert("Erreur lors de l'arrêt de l'enregistrement.");
+    }
+  };
+
   if (loading) return <div className="min-h-screen bg-gray-50"><Navbar title="Tableau de bord Club" /><div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div></div>;
 
   return (
@@ -156,23 +169,34 @@ const ClubDashboard = () => {
                     {dashboardData.courts.map((court) => (
                       <Card key={court.id} className="overflow-hidden flex flex-col">
                         <CardHeader>
-                          <CardTitle className="text-lg">{court.name}</CardTitle>
+                          <CardTitle className="flex justify-between items-center">
+                            <span>{court.name}</span>
+                            {court.status === 'RECORDING' && (
+                              <Badge variant="destructive" className="animate-pulse">LIVE</Badge>
+                            )}
+                          </CardTitle>
                           <CardDescription>QR Code: {court.qr_code?.substring(0, 8)}...</CardDescription>
                         </CardHeader>
                         <CardContent className="flex-grow flex flex-col justify-between">
                           <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden relative mb-4">
                             <img src={court.camera_url} alt={`Caméra ${court.name}`} className="w-full h-full object-cover" />
-                            <div className="absolute top-2 right-2">
-                              <Badge variant="destructive" className="flex items-center">
-                                <span className="relative flex h-2 w-2 mr-1"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span>
-                                LIVE
-                              </Badge>
-                            </div>
                           </div>
                           <Button size="sm" variant="outline" className="w-full" onClick={() => window.open(court.camera_url, '_blank')}>
                             <Play className="h-4 w-4 mr-2" />
                             Voir en direct
                           </Button>
+                          {/* Bouton Forcer l'arrêt si enregistrement en cours */}
+                          {court.status === 'RECORDING' && court.video_id && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full mt-4"
+                              onClick={() => handleClubStopRecording(court.video_id)}
+                            >
+                              <Square className="h-4 w-4 mr-2" />
+                              Forcer l'arrêt
+                            </Button>
+                          )}
                         </CardContent>
                       </Card>
                     ))}

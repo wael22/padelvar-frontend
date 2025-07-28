@@ -48,6 +48,8 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [recordingTime, setRecordingTime] = useState(0);
+  // NOUVEAU : durée sélectionnée
+  const [duration, setDuration] = useState('90');
 
   useEffect(() => {
     if (isOpen) {
@@ -125,12 +127,16 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
     setIsLoading(true);
     setError('');
     try {
+      // On envoie la durée sélectionnée
       const response = await videoService.startRecording({
         court_id: recordingData.court_id,
-        qr_code: recordingData.qr_code || undefined
+        duration: duration,
+        title: recordingData.title,
+        description: recordingData.description,
       });
-      setRecordingData(prev => ({ ...prev, recording_id: response.data.recording_id, startTime: Date.now() }));
-      setStep('recording');
+      // Le tableau de bord principal gérera l'affichage "en cours"
+      onVideoCreated();
+      handleClose();
     } catch (error) {
       setError(error.response?.data?.error || 'Erreur lors du démarrage');
     } finally {
@@ -213,7 +219,6 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
                     <SelectValue placeholder={loadingClubs ? "Chargement..." : "Sélectionnez un club"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* MODIFIÉ : On utilise la liste des clubs suivis */}
                     {followedClubs.map((club) => (
                       <SelectItem key={club.id} value={club.id.toString()}>{club.name}</SelectItem>
                     ))}
@@ -230,6 +235,21 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
                     {courts.map((court) => (
                       <SelectItem key={court.id} value={court.id.toString()}>{court.name}</SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* NOUVEAU CHAMP POUR LA DURÉE */}
+              <div className="space-y-2">
+                <Label htmlFor="duration">Durée d'enregistrement</Label>
+                <Select value={duration} onValueChange={setDuration}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="60">60 minutes</SelectItem>
+                    <SelectItem value="90">90 minutes</SelectItem>
+                    <SelectItem value="120">120 minutes</SelectItem>
+                    <SelectItem value="MAX">Maximum (jusqu'à arrêt)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

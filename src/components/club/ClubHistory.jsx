@@ -153,7 +153,7 @@ const ClubHistory = () => {
         </Alert>
       )}
 
-      {history.length === 0 ? (
+      {!error && history && history.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <History className="h-12 w-12 text-gray-400 mb-4" />
@@ -167,7 +167,7 @@ const ClubHistory = () => {
         </Card>
       ) : (
         <div className="space-y-4">
-          {history.map((entry) => (
+          {history && history.map((entry) => (
             <Card key={entry.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">

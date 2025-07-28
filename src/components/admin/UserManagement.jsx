@@ -306,6 +306,8 @@ const UserManagement = ({ onStatsUpdate }) => {
                 <TableRow>
                   <TableHead>Nom</TableHead>
                   <TableHead>Email</TableHead>
+                  {/* NOUVELLE COLONNE */}
+                  <TableHead>Téléphone</TableHead>
                   <TableHead>Rôle</TableHead>
                   <TableHead>Crédits</TableHead>
                   <TableHead>Actions</TableHead>
@@ -316,6 +318,8 @@ const UserManagement = ({ onStatsUpdate }) => {
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
+                    {/* NOUVELLE CELLULE */}
+                    <TableCell>{user.phone_number || '-'}</TableCell>
                     <TableCell>{getRoleBadge(user.role)}</TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-1">

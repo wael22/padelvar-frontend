@@ -51,6 +51,9 @@ export const videoService = {
   scanQrCode: (qrCode) => api.post('/videos/qr-scan', { qr_code: qrCode }),
   getCameraStream: (courtId) => api.get(`/videos/courts/${courtId}/camera-stream`),
   getCourtsForClub: (clubId) => api.get(`/videos/clubs/${clubId}/courts`),
+  // NOUVELLES FONCTIONS
+  updateVideo: (videoId, data) => api.put(`/videos/${videoId}`, data),
+  deleteVideo: (videoId) => api.delete(`/videos/${videoId}`),
 };
 
 export const adminService = {
