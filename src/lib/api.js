@@ -54,9 +54,13 @@ export const videoService = {
   scanQrCode: (qrCode) => api.post('/videos/qr-scan', { qr_code: qrCode }),
   getCameraStream: (courtId) => api.get(`/videos/courts/${courtId}/camera-stream`),
   getCourtsForClub: (clubId) => api.get(`/videos/clubs/${clubId}/courts`),
-  // NOUVELLES FONCTIONS
+  // NOUVELLES FONCTIONS AMÉLIORÉES
   updateVideo: (videoId, data) => api.put(`/videos/${videoId}`, data),
   deleteVideo: (videoId) => api.delete(`/videos/${videoId}`),
+  getRecordingStatus: (recordingId) => api.get(`/videos/recording/${recordingId}/status`),
+  stopRecordingById: (recordingId, data) => api.post(`/videos/recording/${recordingId}/stop`, data),
+  getAvailableCourts: () => api.get('/videos/courts/available'),
+  downloadVideo: (videoId) => api.get(`/videos/download/${videoId}`, { responseType: 'blob' }),
 };
 
 export const recordingService = {

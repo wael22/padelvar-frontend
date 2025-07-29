@@ -6,11 +6,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Loader2, Play, Share2, MoreHorizontal, Calendar, Lock, Unlock } from 'lucide-react';
+import VideoPlayerModal from './VideoPlayerModal';
 
 const VideoList = () => {
   const [allVideos, setAllVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   useEffect(() => {
     loadVideos();
@@ -26,6 +29,21 @@ const VideoList = () => {
       console.error('Error loading videos:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleWatchVideo = (video) => {
+    setSelectedVideo(video);
+    setIsVideoModalOpen(true);
+  };
+
+  const handleUnlockVideo = async (video) => {
+    try {
+      await videoService.unlockVideo(video.id);
+      loadVideos(); // Recharger la liste
+    } catch (err) {
+      setError('Erreur lors du déverrouillage de la vidéo.');
+      console.error('Error unlocking video:', err);
     }
   };
 
@@ -76,11 +94,13 @@ const VideoList = () => {
         <CardFooter>
           {video.is_unlocked ? (
             <>
-              <Button className="w-full mr-2"><Play className="h-4 w-4 mr-2" />Regarder</Button>
+              <Button className="w-full mr-2" onClick={() => handleWatchVideo(video)}>
+                <Play className="h-4 w-4 mr-2" />Regarder
+              </Button>
               <Button variant="outline" className="w-full"><Share2 className="h-4 w-4 mr-2" />Partager</Button>
             </>
           ) : (
-            <Button className="w-full" variant="secondary">
+            <Button className="w-full" variant="secondary" onClick={() => handleUnlockVideo(video)}>
               <Lock className="h-4 w-4 mr-2" />
               Déverrouiller (1 crédit)
             </Button>
@@ -129,6 +149,15 @@ const VideoList = () => {
           </div>
         ) : <p className="text-center text-gray-500 py-8">Vous n'avez aucune vidéo verrouillée.</p>}
       </TabsContent>
+
+      {/* Modal pour lire les vidéos */}
+      {selectedVideo && (
+        <VideoPlayerModal 
+          video={selectedVideo}
+          isOpen={isVideoModalOpen}
+          onClose={() => setIsVideoModalOpen(false)}
+        />
+      )}
     </Tabs>
   );
 };

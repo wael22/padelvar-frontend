@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth.jsx';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import VideoPlayerModal from './VideoPlayerModal';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -28,6 +29,7 @@ const VideoCard = ({ video, onVideoUnlocked, onEditVideo }) => {
   const { user } = useAuth();
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -96,9 +98,13 @@ const VideoCard = ({ video, onVideoUnlocked, onEditVideo }) => {
   };
 
   const handleWatch = () => {
-    if (video.is_unlocked) {
-      // Ouvrir le lecteur vidéo (à implémenter)
-      alert('Lecteur vidéo à implémenter');
+    if (video.is_unlocked && video.file_url) {
+      // Ouvrir le lecteur vidéo modal
+      setShowVideoPlayer(true);
+    } else if (!video.is_unlocked) {
+      alert('Veuillez d\'abord débloquer cette vidéo');
+    } else {
+      alert('URL de la vidéo non disponible');
     }
   };
 
@@ -250,6 +256,13 @@ const VideoCard = ({ video, onVideoUnlocked, onEditVideo }) => {
           </p>
         )}
       </CardContent>
+      
+      {/* Lecteur vidéo modal */}
+      <VideoPlayerModal
+        video={video}
+        isOpen={showVideoPlayer}
+        onClose={() => setShowVideoPlayer(false)}
+      />
     </Card>
   );
 };

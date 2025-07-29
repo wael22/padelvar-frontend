@@ -87,7 +87,19 @@ const ClubManagement = ({ onStatsUpdate, onDataChange }) => {
   const loadClubCourts = async (clubId) => {
     try {
       const response = await adminService.getClubCourts(clubId);
-      setClubCourts(response.data.courts);
+      console.log('Courts data received:', response.data);
+      console.log('Courts array:', response.data.courts);
+      
+      // Validate courts data before setting state
+      const validCourts = (response.data.courts || []).filter(court => 
+        court && typeof court === 'object' && court.id
+      );
+      
+      if (validCourts.length !== (response.data.courts || []).length) {
+        console.warn('Some courts have invalid data:', response.data.courts);
+      }
+      
+      setClubCourts(validCourts);
     } catch (error) {
       setError('Erreur lors du chargement des terrains');
       console.error('Error loading courts:', error);
@@ -181,6 +193,13 @@ const ClubManagement = ({ onStatsUpdate, onDataChange }) => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    // Check if selectedCourt exists and has an id
+    if (!selectedCourt || !selectedCourt.id) {
+      setError('Erreur: Terrain non sélectionné ou ID manquant');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       await adminService.updateCourt(selectedCourt.id, courtFormData);
       setShowEditCourtModal(false);
@@ -195,6 +214,13 @@ const ClubManagement = ({ onStatsUpdate, onDataChange }) => {
   };
 
   const handleDeleteCourt = async (courtId) => {
+    // Check if courtId is valid
+    if (!courtId) {
+      setError('Erreur: ID du terrain manquant');
+      console.error('Court ID is null or undefined');
+      return;
+    }
+
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce terrain ?')) {
       return;
     }
@@ -252,10 +278,17 @@ const ClubManagement = ({ onStatsUpdate, onDataChange }) => {
   };
 
   const openEditCourtModal = (court) => {
+    // Validate court object before proceeding
+    if (!court || !court.id) {
+      setError('Erreur: Données du terrain invalides');
+      console.error('Invalid court object:', court);
+      return;
+    }
+
     setSelectedCourt(court);
     setCourtFormData({
-      name: court.name,
-      camera_url: court.camera_url
+      name: court.name || '',
+      camera_url: court.camera_url || ''
     });
     setShowEditCourtModal(true);
   };
@@ -630,22 +663,24 @@ const ClubManagement = ({ onStatsUpdate, onDataChange }) => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {clubCourts.map((court) => (
-                  <Card key={court.id} className="border">
+                  <Card key={court?.id || Math.random()} className="border">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-lg">{court.name}</CardTitle>
+                        <CardTitle className="text-lg">{court?.name || 'Terrain sans nom'}</CardTitle>
                         <div className="flex space-x-2">
                           <Button 
                             size="sm" 
                             variant="outline"
                             onClick={() => openEditCourtModal(court)}
+                            disabled={!court?.id}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button 
                             size="sm" 
                             variant="outline"
-                            onClick={() => handleDeleteCourt(court.id)}
+                            onClick={() => handleDeleteCourt(court?.id)}
+                            disabled={!court?.id}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

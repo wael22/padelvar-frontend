@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import CameraPreview from './CameraPreview';
 import { 
   Dialog, 
   DialogContent, 
@@ -127,10 +128,28 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
     try {
       const response = await videoService.startRecording({
         court_id: recordingData.court_id,
+        duration: 90, // Durée par défaut de 90 minutes
+        title: recordingData.title,
+        description: recordingData.description,
         qr_code: recordingData.qr_code || undefined
       });
-      setRecordingData(prev => ({ ...prev, recording_id: response.data.recording_id, startTime: Date.now() }));
+      
+      setRecordingData(prev => ({ 
+        ...prev, 
+        recording_id: response.data.recording_id, 
+        startTime: Date.now() 
+      }));
+      
       setStep('recording');
+      
+      // Optionnel : programmer un arrêt automatique après la durée prévue
+      setTimeout(() => {
+        if (step === 'recording') {
+          // Avertir l'utilisateur que le temps est écoulé
+          setError('Temps d\'enregistrement écoulé. Veuillez arrêter l\'enregistrement.');
+        }
+      }, 90 * 60 * 1000); // 90 minutes
+      
     } catch (error) {
       setError(error.response?.data?.error || 'Erreur lors du démarrage');
     } finally {
@@ -142,16 +161,23 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
     setIsLoading(true);
     setError('');
     try {
-      // ====================================================================
-      // CORRECTION : On s'assure que court_id est bien envoyé
-      // ====================================================================
+      // Calculer la durée réelle d'enregistrement
+      const actualDuration = recordingData.startTime 
+        ? Math.floor((Date.now() - recordingData.startTime) / 1000 / 60) // en minutes
+        : 90;
+      
       const response = await videoService.stopRecording({
         recording_id: recordingData.recording_id,
         title: recordingData.title || `Match du ${new Date().toLocaleDateString('fr-FR')}`,
         description: recordingData.description,
-        court_id: recordingData.court_id // C'est la ligne la plus importante
+        court_id: recordingData.court_id,
+        duration: actualDuration
       });
 
+      // Afficher un message de succès
+      setError('');
+      alert(`Enregistrement sauvegardé avec succès ! Durée: ${actualDuration} minutes`);
+      
       onVideoCreated();
       handleClose();
     } catch (error) {
@@ -251,21 +277,49 @@ const RecordingModal = ({ isOpen, onClose, onVideoCreated }) => {
           )}
 
           {step === 'recording' && (
-            <div className="text-center space-y-6">
-              <div className="flex items-center justify-center">
-                <div className="relative">
-                  <div className="w-24 h-24 bg-red-500 rounded-full flex items-center justify-center animate-pulse"><Camera className="h-12 w-12 text-white" /></div>
-                  <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-600 rounded-full animate-ping"></div>
+            <div className="space-y-6">
+              {/* Preview de la caméra pendant l'enregistrement */}
+              <CameraPreview
+                cameraUrl={courts.find(c => c.id.toString() === recordingData.court_id)?.camera_url}
+                courtName={courts.find(c => c.id.toString() === recordingData.court_id)?.name || 'Terrain'}
+                isRecording={true}
+              />
+              
+              {/* Timer et contrôles */}
+              <div className="text-center space-y-4">
+                <div>
+                  <div className="text-3xl font-mono font-bold text-red-600">{formatTime(recordingTime)}</div>
+                  <p className="text-gray-600 mt-2">Enregistrement en cours...</p>
+                  <p className="text-sm text-gray-500">
+                    {recordingData.title || `Match du ${new Date().toLocaleDateString('fr-FR')}`}
+                  </p>
+                </div>
+                
+                <div className="flex items-center justify-center space-x-4">
+                  <Button onClick={handleStopRecording} disabled={isLoading} variant="destructive" size="lg">
+                    {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Square className="h-4 w-4 mr-2" />}
+                    Arrêter l'enregistrement
+                  </Button>
+                </div>
+                
+                {/* Informations supplémentaires */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Club:</span> {followedClubs.find(c => c.id.toString() === recordingData.club_id)?.name}
+                    </div>
+                    <div>
+                      <span className="font-medium">Terrain:</span> {courts.find(c => c.id.toString() === recordingData.court_id)?.name}
+                    </div>
+                    <div>
+                      <span className="font-medium">Démarré à:</span> {recordingData.startTime ? new Date(recordingData.startTime).toLocaleTimeString('fr-FR') : '-'}
+                    </div>
+                    <div>
+                      <span className="font-medium">ID:</span> {recordingData.recording_id}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div>
-                <div className="text-3xl font-mono font-bold text-red-600">{formatTime(recordingTime)}</div>
-                <p className="text-gray-600 mt-2">Enregistrement en cours...</p>
-              </div>
-              <Button onClick={handleStopRecording} disabled={isLoading} variant="destructive" size="lg">
-                {isLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Square className="h-4 w-4 mr-2" />}
-                Arrêter
-              </Button>
             </div>
           )}
         </div>

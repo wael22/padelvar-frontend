@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { playerService } from '../../lib/api';
+import { useAuth } from '../../hooks/useAuth.jsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Heart, MapPin, Phone, Mail, Calendar } from 'lucide-react';
 
 const ClubFollowing = ({ onFollowChange }) => {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  
   // MODIFIÉ : Un seul état pour tous les clubs
   const [allClubs, setAllClubs] = useState([]);
   // MODIFIÉ : Un état pour savoir quels clubs sont suivis
@@ -16,8 +19,14 @@ const ClubFollowing = ({ onFollowChange }) => {
   const [followError, setFollowError] = useState('');
 
   useEffect(() => {
-    loadClubs();
-  }, []);
+    // Seulement charger les clubs si l'utilisateur est authentifié et l'authentification est finie
+    if (!authLoading && isAuthenticated()) {
+      loadClubs();
+    } else if (!authLoading && !isAuthenticated()) {
+      setLoading(false);
+      setError('Vous devez être connecté pour voir les clubs.');
+    }
+  }, [authLoading, isAuthenticated]);
 
   // MODIFIÉ : Fonction de chargement simplifiée
   const loadClubs = async () => {
@@ -126,6 +135,23 @@ const ClubFollowing = ({ onFollowChange }) => {
       </Card>
     );
   };
+
+  // Vérifier d'abord l'état de l'authentification
+  if (authLoading) {
+    return <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /><span className="ml-2">Vérification de l'authentification...</span></div>;
+  }
+
+  // Si non authentifié, afficher un message
+  if (!isAuthenticated()) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          Vous devez être connecté pour voir les clubs. 
+          <a href="/login" className="underline ml-1">Se connecter</a>
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   if (loading) {
     return <div className="flex justify-center py-8"><Loader2 className="h-8 w-8 animate-spin" /></div>;
