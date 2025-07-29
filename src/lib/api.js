@@ -47,13 +47,27 @@ export const videoService = {
   unlockVideo: (videoId) => api.post(`/videos/${videoId}/unlock`),
   getVideo: (videoId) => api.get(`/videos/${videoId}`),
   shareVideo: (videoId, platform) => api.post(`/videos/${videoId}/share`, { platform }),
-  buyCredits: (credits, paymentMethod) => api.post('/videos/buy-credits', { credits, payment_method: paymentMethod }),
+  buyCredits: (purchaseData) => api.post('/players/credits/buy', purchaseData),
+  getCreditPackages: () => api.get('/players/credits/packages'),
+  getPaymentMethods: () => api.get('/players/credits/payment-methods'),
+  getCreditsHistory: () => api.get('/players/credits/history'),
   scanQrCode: (qrCode) => api.post('/videos/qr-scan', { qr_code: qrCode }),
   getCameraStream: (courtId) => api.get(`/videos/courts/${courtId}/camera-stream`),
   getCourtsForClub: (clubId) => api.get(`/videos/clubs/${clubId}/courts`),
   // NOUVELLES FONCTIONS
   updateVideo: (videoId, data) => api.put(`/videos/${videoId}`, data),
   deleteVideo: (videoId) => api.delete(`/videos/${videoId}`),
+};
+
+export const recordingService = {
+  // Nouvelles API pour l'enregistrement avancé
+  startAdvancedRecording: (data) => api.post('/recording/start', data),
+  stopRecording: (recordingId) => api.post('/recording/stop', { recording_id: recordingId }),
+  forceStopRecording: (recordingId) => api.post(`/recording/force-stop/${recordingId}`),
+  getMyActiveRecording: () => api.get('/recording/my-active'),
+  getClubActiveRecordings: () => api.get('/recording/club/active'),
+  getAvailableCourts: (clubId) => api.get(`/recording/available-courts/${clubId}`),
+  cleanupExpiredRecordings: () => api.post('/recording/cleanup-expired'),
 };
 
 export const adminService = {
@@ -101,6 +115,8 @@ export const clubService = {
   addCreditsToFollower: (playerId, credits) => clubService.addCreditsToPlayer(playerId, credits),
   // NOUVELLE FONCTION
   updateClubProfile: (clubData) => api.put('/clubs/profile', clubData),
+  // Fonction pour arrêter un enregistrement depuis le dashboard club
+  stopRecording: (courtId) => api.post(`/clubs/courts/${courtId}/stop-recording`),
 };
 
 export default api;

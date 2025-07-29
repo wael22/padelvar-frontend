@@ -1,20 +1,22 @@
 // padelvar-frontend/src/pages/PlayerDashboard.jsx
 
 import { useState, useEffect } from 'react';
-import { videoService } from '@/lib/api';
+import { videoService, recordingService } from '@/lib/api';
 import { useAuth } from '@/hooks/useAuth';
 import Navbar from '@/components/common/Navbar';
 import StatCard from '@/components/player/StatCard';
 import ClubFollowing from '@/components/player/ClubFollowing';
-import RecordingModal from '@/components/player/RecordingModal';
+import AdvancedRecordingModal from '@/components/player/AdvancedRecordingModal';
+import ActiveRecordingBanner from '@/components/player/ActiveRecordingBanner';
 import BuyCreditsModal from '@/components/player/BuyCreditsModal';
 import VideoEditorModal from '@/components/player/VideoEditorModal';
+import CreditSystemDisplay from '@/components/player/CreditSystemDisplay';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Video, Clock, BarChart, Plus, QrCode, Loader2, Play, Share2, MoreHorizontal, Calendar, Scissors, Trash2 } from 'lucide-react';
+import { Video, Clock, BarChart, Plus, QrCode, Loader2, Play, Share2, MoreHorizontal, Calendar, Scissors, Trash2, Coins, Timer } from 'lucide-react';
 
 // ====================================================================
 // COMPOSANT VIDÉO (CORRIGÉ POUR L'AFFICHAGE DES BOUTONS)
@@ -118,6 +120,7 @@ const PlayerDashboard = () => {
   const [stats, setStats] = useState({ totalVideos: 0, totalDuration: 0 });
   const [loading, setLoading] = useState(true);
   const [dataVersion, setDataVersion] = useState(0);
+  const [activeRecording, setActiveRecording] = useState(null);
 
   const [isRecordingModalOpen, setIsRecordingModalOpen] = useState(false);
   const [isBuyCreditsModalOpen, setIsBuyCreditsModalOpen] = useState(false);
@@ -126,7 +129,14 @@ const PlayerDashboard = () => {
 
   useEffect(() => {
     loadDashboardData();
+    checkActiveRecording();
   }, [dataVersion]);
+
+  // Vérifier périodiquement s'il y a un enregistrement en cours
+  useEffect(() => {
+    const interval = setInterval(checkActiveRecording, 30000); // Toutes les 30 secondes
+    return () => clearInterval(interval);
+  }, []);
 
   const loadDashboardData = async () => {
     try {
@@ -142,10 +152,38 @@ const PlayerDashboard = () => {
     }
   };
 
-  const handleDataChange = () => setDataVersion(prev => prev + 1);
+  const checkActiveRecording = async () => {
+    try {
+      const response = await recordingService.getMyActiveRecording();
+      setActiveRecording(response.data.active_recording);
+    } catch (error) {
+      console.error("Erreur lors de la vérification de l'enregistrement actif:", error);
+    }
+  };
+
+  const handleDataChange = () => {
+    setDataVersion(prev => prev + 1);
+    checkActiveRecording(); // Vérifier aussi l'enregistrement actif
+  };
+  
   const handleCreditsUpdated = async () => {
     await fetchUser();
     handleDataChange();
+  };
+
+  const handleRecordingStarted = (recordingSession) => {
+    setActiveRecording(recordingSession);
+    handleDataChange();
+  };
+
+  const handleStopRecording = async (recordingId) => {
+    try {
+      await recordingService.stopRecording(recordingId);
+      setActiveRecording(null);
+      handleDataChange();
+    } catch (error) {
+      console.error("Erreur lors de l'arrêt d'enregistrement:", error);
+    }
   };
 
   const openEditorModal = (video) => {
@@ -162,9 +200,17 @@ const PlayerDashboard = () => {
     // On pourrait ensuite ouvrir le modal d'enregistrement avec le QR code pré-rempli.
   };
 
-  const formatDuration = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes}m`;
+  const formatDuration = (minutes) => {
+    if (!minutes) return '0m';
+    
+    // Si c'est déjà en minutes (notre nouveau format)
+    if (minutes < 200) {
+      return `${Math.floor(minutes)}m`;
+    }
+    
+    // Si c'est en secondes (ancien format), convertir
+    const convertedMinutes = Math.floor(minutes / 60);
+    return `${convertedMinutes}m`;
   };
   const averageDuration = stats.totalVideos > 0 ? stats.totalDuration / stats.totalVideos : 0;
 
@@ -172,6 +218,14 @@ const PlayerDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Bandeau d'enregistrement actif */}
+      {activeRecording && (
+        <ActiveRecordingBanner
+          recording={activeRecording}
+          onStop={handleStopRecording}
+        />
+      )}
+
       <Navbar onBuyCreditsClick={() => setIsBuyCreditsModalOpen(true)} />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-6">Bonjour, gérez vos enregistrements !</h1>
@@ -183,23 +237,43 @@ const PlayerDashboard = () => {
         <Card className="mb-8">
           <CardHeader><CardTitle>Actions Rapides</CardTitle></CardHeader>
           <CardContent className="flex space-x-4">
-            <Button onClick={() => setIsRecordingModalOpen(true)}><Plus className="h-4 w-4 mr-2" />Nouvel Enregistrement</Button>
+            <Button 
+              onClick={() => setIsRecordingModalOpen(true)}
+              disabled={!!activeRecording} // Désactiver si enregistrement en cours
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              {activeRecording ? "Enregistrement en cours..." : "Nouvel Enregistrement"}
+            </Button>
             {/* On attache la fonction au bouton */}
             <Button variant="outline" onClick={handleScanQRCode}><QrCode className="h-4 w-4 mr-2" />Scanner QR Code</Button>
           </CardContent>
         </Card>
         <Tabs defaultValue="videos" className="w-full">
-          <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="videos">Mes Vidéos</TabsTrigger><TabsTrigger value="clubs">Clubs</TabsTrigger></TabsList>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="videos">Mes Vidéos</TabsTrigger>
+            <TabsTrigger value="clubs">Clubs</TabsTrigger>
+            <TabsTrigger value="credits">
+              <Coins className="h-4 w-4 mr-2" />
+              Système de Crédits
+            </TabsTrigger>
+          </TabsList>
           <TabsContent value="videos" className="mt-6">
             <MyVideoSection onDataChange={handleDataChange} onEditVideo={openEditorModal} />
           </TabsContent>
           <TabsContent value="clubs" className="mt-6">
             <ClubFollowing onFollowChange={handleDataChange} />
           </TabsContent>
+          <TabsContent value="credits" className="mt-6">
+            <CreditSystemDisplay onBuyCreditsClick={() => setIsBuyCreditsModalOpen(true)} />
+          </TabsContent>
         </Tabs>
       </main>
 
-      <RecordingModal isOpen={isRecordingModalOpen} onClose={() => setIsRecordingModalOpen(false)} onVideoCreated={handleDataChange} />
+      <AdvancedRecordingModal 
+        isOpen={isRecordingModalOpen} 
+        onClose={() => setIsRecordingModalOpen(false)} 
+        onRecordingStarted={handleRecordingStarted}
+      />
       <BuyCreditsModal isOpen={isBuyCreditsModalOpen} onClose={() => setIsBuyCreditsModalOpen(false)} onCreditsUpdated={handleCreditsUpdated} />
       <VideoEditorModal isOpen={isEditorModalOpen} onClose={() => setIsEditorModalOpen(false)} video={selectedVideoForEditor} />
     </div>

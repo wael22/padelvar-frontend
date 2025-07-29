@@ -36,7 +36,7 @@ import {
   User,
   Loader2,
   Gift,
-  Square
+  StopCircle
 } from 'lucide-react';
 
 import ClubHistory from './ClubHistory';
@@ -95,25 +95,31 @@ const ClubDashboard = () => {
     setShowCreditsModal(true);
   };
 
+  const handleStopRecording = async (courtId) => {
+    try {
+      setError('');
+      await clubService.stopRecording(courtId);
+      // Recharger le dashboard pour mettre à jour l'état des terrains
+      loadDashboard();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Erreur lors de l\'arrêt de l\'enregistrement');
+    }
+  };
+
   const formatDate = (dateString) => new Date(dateString).toLocaleDateString('fr-FR', {
     day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
   });
 
-  const formatDuration = (seconds) => {
-    if (!seconds) return 'N/A';
-    return `${Math.floor(seconds / 60)}m`;
-  };
-
-
-  // Gestion arrêt club
-  const handleClubStopRecording = async (videoId) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir forcer l'arrêt de l'enregistrement ?")) return;
-    try {
-      await clubService.stopRecording(videoId);
-      loadDashboard();
-    } catch (err) {
-      alert("Erreur lors de l'arrêt de l'enregistrement.");
+  const formatDuration = (minutes) => {
+    if (!minutes) return 'N/A';
+    
+    // Si c'est déjà en minutes (notre nouveau format)
+    if (minutes < 200) {
+      return `${minutes}m`;
     }
+    
+    // Si c'est en secondes (ancien format), convertir
+    return `${Math.floor(minutes / 60)}m`;
   };
 
   if (loading) return <div className="min-h-screen bg-gray-50"><Navbar title="Tableau de bord Club" /><div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div></div>;
@@ -167,34 +173,67 @@ const ClubDashboard = () => {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {dashboardData.courts.map((court) => (
-                      <Card key={court.id} className="overflow-hidden flex flex-col">
+                      <Card key={court.id} className={`overflow-hidden flex flex-col ${court.is_occupied ? 'border-l-4 border-l-red-500' : 'border-l-4 border-l-green-500'}`}>
                         <CardHeader>
-                          <CardTitle className="flex justify-between items-center">
+                          <CardTitle className="text-lg flex items-center justify-between">
                             <span>{court.name}</span>
-                            {court.status === 'RECORDING' && (
-                              <Badge variant="destructive" className="animate-pulse">LIVE</Badge>
-                            )}
+                            <Badge variant={court.is_occupied ? "destructive" : "default"} className="flex items-center space-x-1">
+                              {court.is_occupied ? (
+                                <>
+                                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                  <span>Occupé</span>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                  <span>Disponible</span>
+                                </>
+                              )}
+                            </Badge>
                           </CardTitle>
                           <CardDescription>QR Code: {court.qr_code?.substring(0, 8)}...</CardDescription>
+                          {court.is_occupied && (
+                            <div className="text-sm text-red-600 font-medium">
+                              🎬 {court.recording_player} - {court.recording_remaining}min restant
+                            </div>
+                          )}
                         </CardHeader>
                         <CardContent className="flex-grow flex flex-col justify-between">
                           <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden relative mb-4">
                             <img src={court.camera_url} alt={`Caméra ${court.name}`} className="w-full h-full object-cover" />
+                            <div className="absolute top-2 right-2">
+                              <Badge variant="destructive" className="flex items-center">
+                                <span className="relative flex h-2 w-2 mr-1"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span></span>
+                                LIVE
+                              </Badge>
+                            </div>
+                            {court.is_occupied && (
+                              <div className="absolute bottom-2 left-2">
+                                <Badge variant="secondary" className="bg-black/70 text-white">
+                                  🔴 ENREGISTREMENT
+                                </Badge>
+                              </div>
+                            )}
                           </div>
-                          <Button size="sm" variant="outline" className="w-full" onClick={() => window.open(court.camera_url, '_blank')}>
+                          <Button 
+                            size="sm" 
+                            variant={court.is_occupied ? "secondary" : "outline"} 
+                            className="w-full" 
+                            onClick={() => window.open(court.camera_url, '_blank')}
+                            disabled={!court.camera_url}
+                          >
                             <Play className="h-4 w-4 mr-2" />
                             Voir en direct
                           </Button>
-                          {/* Bouton Forcer l'arrêt si enregistrement en cours */}
-                          {court.status === 'RECORDING' && court.video_id && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full mt-4"
-                              onClick={() => handleClubStopRecording(court.video_id)}
+                          {court.is_occupied && (
+                            <Button 
+                              size="sm" 
+                              variant="destructive" 
+                              className="w-full mt-2" 
+                              onClick={() => handleStopRecording(court.id)}
                             >
-                              <Square className="h-4 w-4 mr-2" />
-                              Forcer l'arrêt
+                              <StopCircle className="h-4 w-4 mr-2" />
+                              Arrêter l'Enregistrement
                             </Button>
                           )}
                         </CardContent>

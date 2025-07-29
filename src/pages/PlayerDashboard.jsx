@@ -1,16 +1,20 @@
 
 import { useState, useEffect } from 'react';
-import { videoService } from '@/lib/api';
+import { videoService, recordingService } from '@/lib/api';
 import Navbar from '@/components/common/Navbar';
 import StatCard from '@/components/player/StatCard';
 import ClubFollowing from '@/components/player/ClubFollowing';
-import RecordingModal from '@/components/player/RecordingModal';
+import AdvancedRecordingModal from '@/components/player/AdvancedRecordingModal';
+import ActiveRecordingBanner from '@/components/player/ActiveRecordingBanner';
+import BuyCreditsModal from '@/components/player/BuyCreditsModal';
+import VideoEditorModal from '@/components/player/VideoEditorModal';
+import CreditSystemDisplay from '@/components/player/CreditSystemDisplay';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Video, Clock, BarChart, Plus, QrCode, Loader2, Play, Share2, MoreHorizontal, Calendar, Lock, Unlock, Edit, Trash2, Coins } from 'lucide-react';
+import { Video, Clock, BarChart, Plus, QrCode, Loader2, Play, Share2, MoreHorizontal, Calendar, Lock, Unlock, Edit, Trash2, Coins, Timer } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 
