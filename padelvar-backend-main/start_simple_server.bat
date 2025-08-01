@@ -1,0 +1,6 @@
+@echo off
+echo Arrêt du serveur Flask actuel...
+taskkill /f /im python.exe 2>nul
+echo.
+echo Démarrage du serveur simple avec CORS...
+python simple_server.py
