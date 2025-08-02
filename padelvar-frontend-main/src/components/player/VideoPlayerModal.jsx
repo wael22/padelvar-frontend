@@ -92,13 +92,21 @@ const VideoPlayerModal = ({ video, isOpen, onClose }) => {
   };
 
   const downloadVideo = () => {
-    const videoUrl = video.file_url.startsWith('http') 
-      ? video.file_url 
-      : `http://localhost:5000${video.file_url}`;
+    // Utilisation de Bunny CDN pour télécharger la vidéo
+    let downloadUrl = '';
+    
+    if (video.file_url?.startsWith('http')) {
+      downloadUrl = video.file_url;
+    } else {
+      // Format: https://storage.bunnycdn.com/padelvar/[filename]
+      const bunnyStorage = 'https://storage.bunnycdn.com/padelvar/';
+      const filename = video.file_url ? video.file_url.split('/').pop() : `video_${video.id}.mp4`;
+      downloadUrl = `${bunnyStorage}${filename}`;
+    }
     
     const a = document.createElement('a');
-    a.href = videoUrl;
-    a.download = `${video.title}.mp4`;
+    a.href = downloadUrl;
+    a.download = `${video.title || 'video'}.mp4`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -113,9 +121,34 @@ const VideoPlayerModal = ({ video, isOpen, onClose }) => {
 
   if (!video || !isOpen) return null;
 
-  const videoUrl = video.file_url?.startsWith('http') 
-    ? video.file_url 
-    : `http://localhost:5000${video.file_url}`;
+  // Construction de l'URL de la vidéo en utilisant Bunny CDN
+  let videoUrl = '';
+  if (video.file_url) {
+    if (video.file_url.startsWith('http')) {
+      // URL absolue externe (déjà complète)
+      videoUrl = video.file_url;
+    } else {
+      // Utilisation de Bunny CDN pour servir les vidéos
+      // Format: https://storage.bunnycdn.com/padelvar/[filename]
+      const bunnyStorage = 'https://storage.bunnycdn.com/padelvar/';
+      
+      // Extraire le nom du fichier de file_url
+      const filename = video.file_url.split('/').pop();
+      
+      if (filename) {
+        videoUrl = `${bunnyStorage}${filename}`;
+      } else {
+        // Fallback: utiliser l'ID de la vidéo comme nom de fichier
+        videoUrl = `${bunnyStorage}video_${video.id}.mp4`;
+      }
+    }
+  } else {
+    // URL par défaut si file_url est vide
+    const bunnyStorage = 'https://storage.bunnycdn.com/padelvar/';
+    videoUrl = `${bunnyStorage}video_${video.id}.mp4`;
+  }
+
+  console.log("URL de la vidéo:", videoUrl); // Pour faciliter le debugging
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

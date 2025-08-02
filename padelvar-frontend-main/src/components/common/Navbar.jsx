@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Link } from 'react-router-dom';
-import { LogOut, User, Settings, Coins } from 'lucide-react';
+import { LogOut, User, Coins } from 'lucide-react';
 
 const Navbar = ({ title }) => {
   const { user, logout } = useAuth();
@@ -81,12 +81,6 @@ const Navbar = ({ title }) => {
                   <Link to="/profile">
                     <User className="mr-2 h-4 w-4" />
                     <span>Profil</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Paramètres</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

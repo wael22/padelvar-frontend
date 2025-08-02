@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Mail, Lock, User, Phone } from 'lucide-react';
+import GoogleAuth from '../GoogleAuth';
 
 const RegisterForm = () => {
   const [formData, setFormData] = useState({
@@ -197,6 +198,18 @@ const RegisterForm = () => {
             <p className="text-xs text-gray-500">
               En vous inscrivant, vous recevez 5 crédits gratuits !
             </p>
+          </div>
+          
+          <div className="mt-6 flex flex-col items-center justify-center">
+            <div className="relative w-full mb-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-gray-300"></span>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Ou</span>
+              </div>
+            </div>
+            <GoogleAuth />
           </div>
         </CardContent>
       </Card>
