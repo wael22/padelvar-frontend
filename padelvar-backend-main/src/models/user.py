@@ -20,6 +20,11 @@ from datetime import datetime
 from enum import Enum
 from .database import db
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import event
+import logging
+
+# Logging
+logger = logging.getLogger(__name__)
 
 class UserRole(Enum):
     SUPER_ADMIN = "super_admin"
@@ -42,6 +47,7 @@ class User(db.Model):
     role = db.Column(db.Enum(UserRole), nullable=False, default=UserRole.PLAYER)
     credits_balance = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    google_id = db.Column(db.String(100), nullable=True, unique=True)  # ID Google pour l'authentification
     
     videos = db.relationship('Video', backref='owner', lazy=True, cascade='all, delete-orphan')
     club_id = db.Column(db.Integer, db.ForeignKey('club.id'), nullable=True)
@@ -125,6 +131,7 @@ class Video(db.Model):
     credits_cost = db.Column(db.Integer, default=1)
     recorded_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    cdn_migrated_at = db.Column(db.DateTime, nullable=True)  # Date de migration vers Bunny Stream
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     court_id = db.Column(db.Integer, db.ForeignKey('court.id'), nullable=True)
     
@@ -139,7 +146,8 @@ class Video(db.Model):
             "title": self.title, "description": self.description, "duration": self.duration,
             "file_size": self.file_size, "is_unlocked": self.is_unlocked, "credits_cost": self.credits_cost,
             "recorded_at": self.recorded_at.isoformat() if self.recorded_at else None,
-            "created_at": self.created_at.isoformat() if self.created_at else None
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "cdn_migrated_at": self.cdn_migrated_at.isoformat() if self.cdn_migrated_at else None
         }
 
 class RecordingSession(db.Model):
@@ -208,11 +216,33 @@ class RecordingSession(db.Model):
         return max(0, self.planned_duration - elapsed)
     
     def is_expired(self):
-        """Vérifier si l'enregistrement a expiré"""
+        """Vérifier si l'enregistrement a expiré
+        
+        L'enregistrement est considéré comme expiré dans les cas suivants:
+        1. La durée planifiée est dépassée
+        2. La durée maximale autorisée est dépassée
+        3. Le statut indique que l'enregistrement n'est plus actif
+        """
+        # Si l'enregistrement n'est pas actif, il n'est pas expiré (déjà arrêté)
         if self.status != 'active':
             return False
+            
+        # Calcul du temps écoulé
         elapsed = self.get_elapsed_minutes()
-        return elapsed >= self.planned_duration
+        
+        # Vérifier si la durée planifiée est dépassée
+        planned_exceeded = elapsed >= self.planned_duration
+        
+        # Vérifier si la durée maximale autorisée est dépassée
+        max_exceeded = elapsed >= self.max_duration
+        
+        # Vérifier si end_time est défini et dans le passé
+        time_expired = False
+        if self.end_time:
+            time_expired = datetime.utcnow() >= self.end_time
+            
+        # L'enregistrement expire si l'une des conditions est remplie
+        return planned_exceeded or max_exceeded or time_expired
 
 class ClubActionHistory(db.Model):
     __tablename__ = 'club_action_history'
@@ -238,3 +268,66 @@ class ClubActionHistory(db.Model):
             'action_details': self.action_details,
             'performed_at': self.performed_at.isoformat() if self.performed_at else None
         }
+
+# ====================================================================
+# CONFIGURATION DE LA SYNCHRONISATION BIDIRECTIONNELLE
+# ====================================================================
+
+# Synchronisation User -> Club
+@event.listens_for(User, 'after_update')
+def sync_user_to_club(mapper, connection, target):
+    """Synchronise les changements d'un utilisateur club vers son club"""
+    if target.role == UserRole.CLUB and target.club_id:
+        try:
+            # Cette fonction est appelée dans une transaction, on doit utiliser la session actuelle
+            club = db.session.query(Club).get(target.club_id)
+            if club:
+                changed = False
+                
+                # Synchroniser les attributs
+                if club.name != target.name:
+                    club.name = target.name
+                    changed = True
+                
+                if club.email != target.email:
+                    club.email = target.email
+                    changed = True
+                
+                if club.phone_number != target.phone_number:
+                    club.phone_number = target.phone_number
+                    changed = True
+                
+                # Log des changements
+                if changed:
+                    logger.info(f"Synchronisation User→Club: Club {club.id} mis à jour depuis User {target.id}")
+        except Exception as e:
+            logger.error(f"Erreur lors de la synchronisation User→Club: {e}")
+
+# Synchronisation Club -> User
+@event.listens_for(Club, 'after_update')
+def sync_club_to_user(mapper, connection, target):
+    """Synchronise les changements d'un club vers son utilisateur associé"""
+    try:
+        # Trouver l'utilisateur associé - on doit utiliser la session active
+        user = db.session.query(User).filter_by(club_id=target.id, role=UserRole.CLUB).first()
+        if user:
+            changed = False
+            
+            # Synchroniser les attributs
+            if user.name != target.name:
+                user.name = target.name
+                changed = True
+            
+            if user.email != target.email:
+                user.email = target.email
+                changed = True
+            
+            if user.phone_number != target.phone_number:
+                user.phone_number = target.phone_number
+                changed = True
+            
+            # Log des changements
+            if changed:
+                logger.info(f"Synchronisation Club→User: User {user.id} mis à jour depuis Club {target.id}")
+    except Exception as e:
+        logger.error(f"Erreur lors de la synchronisation Club→User: {e}")
